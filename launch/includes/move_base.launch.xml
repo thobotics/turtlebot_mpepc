@@ -1,0 +1,22 @@
+<!-- 
+    ROS navigation stack with velocity smoother and safety (reactive) controller
+-->
+<launch>
+  <arg name="odom_topic" default="odom" /> 
+
+  <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+    <rosparam file="$(find turtlebot_mpepc)/param/costmap_common_params.yaml" command="load" ns="global_costmap" />
+    <rosparam file="$(find turtlebot_mpepc)/param/costmap_common_params.yaml" command="load" ns="local_costmap" />   
+    <rosparam file="$(find turtlebot_mpepc)/param/local_costmap_params.yaml" command="load" />   
+    <rosparam file="$(find turtlebot_mpepc)/param/global_costmap_params.yaml" command="load" />
+    <rosparam file="$(find turtlebot_navigation)/param/dwa_local_planner_params.yaml" command="load" />
+    <rosparam file="$(find turtlebot_navigation)/param/move_base_params.yaml" command="load" />
+    <rosparam file="$(find turtlebot_navigation)/param/global_planner_params.yaml" command="load" />
+    <rosparam file="$(find turtlebot_navigation)/param/navfn_global_planner_params.yaml" command="load" />
+
+    <remap from="cmd_vel" to="/cmd_vel_mux/input/teleop"/>
+    <remap from="odom" to="$(arg odom_topic)"/>
+  </node>
+
+
+</launch>
