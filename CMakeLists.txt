@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   tf
+  pluginlib
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -59,11 +61,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+   FILES
+   GetNavCost.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -73,10 +74,12 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   geometry_msgs#   nav_msgs#   sensor_msgs#   std_msgs
-# )
+ generate_messages(
+   DEPENDENCIES
+   geometry_msgs
+   #   nav_msgs#   sensor_msgs
+   std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -122,13 +125,14 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
+  include
   ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
-# add_library(turtlebot_mpepc
-#   src/${PROJECT_NAME}/turtlebot_mpepc.cpp
-# )
+add_library(navfnext
+   src/navfn_ros_ext.cpp
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -136,16 +140,21 @@ include_directories(
 # add_dependencies(turtlebot_mpepc ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-# add_executable(turtlebot_mpepc_node src/turtlebot_mpepc_node.cpp)
+add_executable(nav_test_client src/navfn_service_test.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(turtlebot_mpepc_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(turtlebot_mpepc_node
-#   ${catkin_LIBRARIES}
-# )
+target_link_libraries(navfnext
+   ${catkin_LIBRARIES}
+)
+
+target_link_libraries(nav_test_client
+   ${catkin_LIBRARIES}
+)
+
 
 #############
 ## Install ##

@@ -1,0 +1,6 @@
+# Give pose
+geometry_msgs/Point world_point
+
+---
+
+float64 cost
