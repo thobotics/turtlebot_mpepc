@@ -5,6 +5,8 @@ project(turtlebot_mpepc)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  base_local_planner
+  cmake_modules
   costmap_2d
   geometry_msgs
   nav_core
@@ -130,8 +132,12 @@ include_directories(
 )
 
 ## Declare a C++ library
-add_library(navfnext
-   src/navfn_ros_ext.cpp
+#add_library(navfnext
+#   src/navfn_ros_ext.cpp
+#)
+
+add_library(mpepc_planner
+   src/mpepc_local_planner.cpp
 )
 
 ## Add cmake target dependencies of the library
@@ -144,12 +150,18 @@ add_executable(nav_test_client src/navfn_service_test.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(turtlebot_mpepc_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(nav_test_client ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#add_dependencies(navfnext ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(mpepc_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(navfnext
+target_link_libraries(mpepc_planner
    ${catkin_LIBRARIES}
 )
+
+#target_link_libraries(navfnext
+#   ${catkin_LIBRARIES}
+#)
 
 target_link_libraries(nav_test_client
    ${catkin_LIBRARIES}
@@ -190,6 +202,12 @@ target_link_libraries(nav_test_client
 #   # myfile2
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 # )
+
+install(FILES 
+	blp_plugin.xml
+	#bgp_plugin.xml
+    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
 
 #############
 ## Testing ##

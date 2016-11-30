@@ -27,21 +27,7 @@ namespace navfn {
 	}
 
 	bool NavfnROSExt::getNavigationCost(turtlebot_mpepc::GetNavCost::Request& req, turtlebot_mpepc::GetNavCost::Response& resp){
-		geometry_msgs::Point currentPoint;
-
-		//if(req.world_point == NULL){
-			tf::Stamped<tf::Pose> global_pose;
-			costmap_ros_->getRobotPose(global_pose);
-			geometry_msgs::PoseStamped start;
-			tf::poseStampedTFToMsg(global_pose, start);
-			currentPoint = start.pose.position;
-		//}else{
-		//	currentPoint = req.world_point;
-		//}
-
-		ROS_INFO("Cost at %f %f", currentPoint.x, currentPoint.y);
-
-		resp.cost =  getPointPotential(currentPoint);
+		resp.cost =  getPointPotential(req.world_point );
 
 		return true;
 	}

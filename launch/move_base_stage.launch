@@ -85,8 +85,6 @@
   </include>-->
   
   <!--  **************** Visualisation ****************  -->
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlebot_stage)/rviz/robot_navigation.rviz"/>
-
-<!--   <node pkg="rviz" type="rviz" respawn="false" name="rviz" args="-d $(find turtlebot_mpepc)/rviz/mpepc_nav.rviz" /> -->
+  <node pkg="rviz" type="rviz" respawn="false" name="rviz" args="-d $(find turtlebot_mpepc)/rviz/mpepc_nav.rviz" />
 
 </launch>
