@@ -1,0 +1,7 @@
+<library path="lib/libmpepc_local_planner">
+  <class name="mpepc_local_planner/MpepcPlannerROS" type="mpepc_local_planner::MpepcPlannerROS" base_class_type="nav_core::BaseLocalPlanner">
+    <description>
+      A implementation of a local planner for MPEPC optimal control bases.
+    </description>
+  </class>
+</library>

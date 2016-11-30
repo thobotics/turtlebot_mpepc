@@ -5,7 +5,7 @@
  *      Author: thobotics
  */
 
-#include <turtlebot_mpepc/navfn_ros_ext.h>
+#include <mpepc_global_planner/navfn_ros_ext.h>
 
 //register this planner as a BaseGlobalPlanner plugin
 PLUGINLIB_DECLARE_CLASS(navfn, NavfnROSExt, navfn::NavfnROSExt, nav_core::BaseGlobalPlanner)
@@ -26,7 +26,7 @@ namespace navfn {
 		ROS_INFO("Initialize NavfnROSExt");
 	}
 
-	bool NavfnROSExt::getNavigationCost(turtlebot_mpepc::GetNavCost::Request& req, turtlebot_mpepc::GetNavCost::Response& resp){
+	bool NavfnROSExt::getNavigationCost(mpepc_global_planner::GetNavCost::Request& req, mpepc_global_planner::GetNavCost::Response& resp){
 		resp.cost =  getPointPotential(req.world_point );
 
 		return true;

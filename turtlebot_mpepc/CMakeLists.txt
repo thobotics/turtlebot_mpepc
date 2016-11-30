@@ -4,23 +4,7 @@ project(turtlebot_mpepc)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-  base_local_planner
-  cmake_modules
-  costmap_2d
-  geometry_msgs
-  nav_core
-  nav_msgs
-  navfn
-  roscpp
-  roslib
-  rospy
-  sensor_msgs
-  std_msgs
-  tf
-  pluginlib
-  message_generation
-)
+find_package(catkin REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -63,10 +47,11 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate services in the 'srv' folder
-add_service_files(
-   FILES
-   GetNavCost.srv
-)
+# add_service_files(
+#   FILES
+#   Service1.srv
+#   Service2.srv
+# )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -76,12 +61,10 @@ add_service_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
- generate_messages(
-   DEPENDENCIES
-   geometry_msgs
-   #   nav_msgs#   sensor_msgs
-   std_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs  # Or other packages containing msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -115,7 +98,7 @@ add_service_files(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES turtlebot_mpepc
-#  CATKIN_DEPENDS costmap_2d geometry_msgs nav_core nav_msgs navfn roscpp roslib rospy sensor_msgs std_msgs tf
+#  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
 )
 
@@ -126,19 +109,11 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 # include_directories(include)
-include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-)
 
 ## Declare a C++ library
-#add_library(navfnext
-#   src/navfn_ros_ext.cpp
-#)
-
-add_library(mpepc_planner
-   src/mpepc_local_planner.cpp
-)
+# add_library(turtlebot_mpepc
+#   src/${PROJECT_NAME}/turtlebot_mpepc.cpp
+# )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -146,27 +121,16 @@ add_library(mpepc_planner
 # add_dependencies(turtlebot_mpepc ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(nav_test_client src/navfn_service_test.cpp)
+# add_executable(turtlebot_mpepc_node src/turtlebot_mpepc_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(nav_test_client ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-#add_dependencies(navfnext ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(mpepc_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(turtlebot_mpepc_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(mpepc_planner
-   ${catkin_LIBRARIES}
-)
-
-#target_link_libraries(navfnext
+# target_link_libraries(turtlebot_mpepc_node
 #   ${catkin_LIBRARIES}
-#)
-
-target_link_libraries(nav_test_client
-   ${catkin_LIBRARIES}
-)
-
+# )
 
 #############
 ## Install ##
@@ -202,12 +166,6 @@ target_link_libraries(nav_test_client
 #   # myfile2
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 # )
-
-install(FILES 
-	blp_plugin.xml
-	#bgp_plugin.xml
-    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-)
 
 #############
 ## Testing ##

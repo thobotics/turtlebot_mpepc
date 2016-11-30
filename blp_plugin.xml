@@ -1,7 +1,0 @@
-<library path="lib/libmpepc_planner">
-  <class name="mpepc_local_planner/MPEPCPlanner" type="mpepc_local_planner::MPEPCPlanner" base_class_type="nav_core::BaseLocalPlanner">
-    <description>
-      A implementation of a local planner using model predictive control combine with equibirlumn control.
-    </description>
-  </class>
-</library>

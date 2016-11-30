@@ -13,7 +13,7 @@
 #include <tf/transform_listener.h>
 #include <costmap_2d/cost_values.h>
 #include <costmap_2d/costmap_2d.h>
-#include <turtlebot_mpepc/GetNavCost.h>
+#include <mpepc_global_planner/GetNavCost.h>
 
 namespace navfn {
 /**
@@ -32,7 +32,7 @@ namespace navfn {
 	  /**
 	   * Service call back
 	   */
-	  bool getNavigationCost(turtlebot_mpepc::GetNavCost::Request& req, turtlebot_mpepc::GetNavCost::Response& resp);
+	  bool getNavigationCost(mpepc_global_planner::GetNavCost::Request& req, mpepc_global_planner::GetNavCost::Response& resp);
   private:
 	  ros::ServiceServer cost_service_;
   };

@@ -6,7 +6,7 @@
  */
 
 #include "ros/ros.h"
-#include <turtlebot_mpepc/GetNavCost.h>
+#include <mpepc_global_planner/GetNavCost.h>
 #include <cstdlib>
 
 int main(int argc, char **argv)
@@ -14,8 +14,8 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "nav_test_client");
 
   ros::NodeHandle n;
-  ros::ServiceClient client = n.serviceClient<turtlebot_mpepc::GetNavCost>("/move_base/NavfnROSExt/nav_cost");
-  turtlebot_mpepc::GetNavCost srv;
+  ros::ServiceClient client = n.serviceClient<mpepc_global_planner::GetNavCost>("/move_base/NavfnROSExt/nav_cost");
+  mpepc_global_planner::GetNavCost srv;
 
   //srv.request.world_point =
   if (client.call(srv))

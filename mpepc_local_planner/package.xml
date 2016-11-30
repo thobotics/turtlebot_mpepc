@@ -1,0 +1,39 @@
+<package>
+  <name>mpepc_local_planner</name>
+  <description>
+    A local planner for the ROS navigation stack for ackermann style vehicles.
+  </description>
+  <version>0.1.0</version>
+  <maintainer email="thobotics@gmail.com">Tai Hoang</maintainer>
+  <author email="thobotics@gmail.com">Tai Hoang</author>
+  <license>BSD</license>
+  <url></url>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>angles</run_depend>
+  <run_depend>base_local_planner</run_depend>
+  <run_depend>costmap_2d</run_depend>
+  <run_depend>dynamic_reconfigure</run_depend>
+  <run_depend>nav_core</run_depend>
+  <run_depend>nav_msgs</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>roslib</run_depend>
+  <run_depend>tf</run_depend>
+
+  <build_depend>angles</build_depend>
+  <build_depend>base_local_planner</build_depend>
+  <build_depend>costmap_2d</build_depend>
+  <build_depend>dynamic_reconfigure</build_depend>
+  <build_depend>nav_core</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>roslib</build_depend>
+  <build_depend>tf</build_depend>
+
+  <export>
+    <nav_core plugin="${prefix}/blp_plugin.xml" />
+  </export>
+</package>
+
+
