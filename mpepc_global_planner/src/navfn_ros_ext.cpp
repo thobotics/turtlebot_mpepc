@@ -54,6 +54,15 @@ namespace navfn {
 		  return false;
 		}
 
+		/**
+		 * -------------------- START --------------------
+		 * compute navigation cost from start to goal
+		 *
+		 * NOTE: equivalent to computePotentialPoint, but
+		 * using start pose on global_costmap instead of
+		 * (0,0) <=> start pose on local_costmap
+		 * -----------------------------------------------
+		 */
 		double wx = start.pose.position.x;
 		double wy = start.pose.position.y;
 
@@ -110,12 +119,22 @@ namespace navfn {
 		map_goal[0] = mx;
 		map_goal[1] = my;
 
-		planner_->setStart(map_goal);
-		planner_->setGoal(map_start);
+		planner_->setStart(map_start);
+		planner_->setGoal(map_goal);
 
 		//bool success = planner_->calcNavFnAstar();
 		planner_->calcNavFnDijkstra(true);
 
+		/**
+		 * -------------------- END --------------------
+		 */
+
+		/**
+		 * -------------------- START --------------------
+		 * Check goal and near region (tolerance) is valid
+		 * potential point
+		 * -----------------------------------------------
+		 */
 		double resolution = costmap->getResolution();
 		geometry_msgs::PoseStamped p, best_pose;
 		p = goal;
@@ -139,6 +158,10 @@ namespace navfn {
 		  }
 		  p.pose.position.y += resolution;
 		}
+
+		/**
+		 * -------------------- END --------------------
+		 */
 
 		if(found_legal){
 		  //extract the plan
