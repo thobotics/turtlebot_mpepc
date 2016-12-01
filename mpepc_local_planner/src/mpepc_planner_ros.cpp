@@ -131,18 +131,25 @@ namespace mpepc_local_planner {
 		tf::Stamped<tf::Pose> robot_pose;
 		costmap_ros_->getRobotPose(robot_pose);
 
+		geometry_msgs::PoseStamped temp;
+		tf::poseStampedTFToMsg(robot_pose, temp);
+
 		geometry_msgs::PoseStamped start;
-		tf::poseStampedTFToMsg(robot_pose, start);
+		//tf_->transformPose("/map", temp, start);
+		start = temp;
+
 		geometry_msgs::Point currentPoint;
 		currentPoint = start.pose.position;
 
-		ROS_INFO("Request cost at %f %f", currentPoint.x, currentPoint.y);
-
 		mpepc_global_planner::GetNavCost service;
 		service.request.world_point = currentPoint;
+
+
 		if (navfn_cost_.call(service))
 		{
-			ROS_INFO("Response cost: %f", (double)service.response.cost);
+			ROS_INFO("Response cost at %f %f : %f",
+					currentPoint.x, currentPoint.y,
+					(double)service.response.cost);
 			return true;
 		}
 		else

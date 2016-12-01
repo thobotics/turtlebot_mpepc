@@ -33,6 +33,9 @@ namespace navfn {
 	   * Service call back
 	   */
 	  bool getNavigationCost(mpepc_global_planner::GetNavCost::Request& req, mpepc_global_planner::GetNavCost::Response& resp);
+
+	  bool makePlan(const geometry_msgs::PoseStamped& start,
+	        const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);
   private:
 	  ros::ServiceServer cost_service_;
   };

@@ -26,9 +26,35 @@ namespace navfn {
 		ROS_INFO("Initialize NavfnROSExt");
 	}
 
-	bool NavfnROSExt::getNavigationCost(mpepc_global_planner::GetNavCost::Request& req, mpepc_global_planner::GetNavCost::Response& resp){
-		resp.cost =  getPointPotential(req.world_point );
+	bool NavfnROSExt::makePlan(const geometry_msgs::PoseStamped& start,
+      const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan){
+		bool result = NavfnROS::makePlan(start, goal, plan);
 
+		geometry_msgs::Point currentPoint = goal.pose.position;
+		double cost = getPointPotential(currentPoint);
+		ROS_INFO("AFTER PLANNED goal cost at %f,%f: %f",
+				currentPoint.x, currentPoint.y, cost);
+
+		return result;
+	}
+
+	bool NavfnROSExt::getNavigationCost(mpepc_global_planner::GetNavCost::Request& req, mpepc_global_planner::GetNavCost::Response& resp){
+		/*geometry_msgs::PoseStamped start;
+		// Get robot pose
+		tf::Stamped<tf::Pose> robot_pose;
+		costmap_ros_->getRobotPose(robot_pose);
+		tf::poseStampedTFToMsg(robot_pose, start);
+
+		geometry_msgs::Point currentPoint;
+		currentPoint = start.pose.position;
+
+		ROS_INFO("Receieved %f, %f", currentPoint.x, currentPoint.y);*/
+
+		geometry_msgs::Point current_point = req.world_point;
+		if(validPointPotential(current_point))
+			resp.cost =  getPointPotential(current_point);
+		else
+			resp.cost = -1;
 		return true;
 	}
 
