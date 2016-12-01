@@ -42,6 +42,20 @@ namespace navfn {
 			  const geometry_msgs::PoseStamped& goal, double tolerance, std::vector<geometry_msgs::PoseStamped>& plan);
   private:
 	  ros::ServiceServer cost_service_;
+
+	  /**
+	   * Copy from NavfnROS to make makePlan work
+	   */
+	  inline double sq_distance(const geometry_msgs::PoseStamped& p1, const geometry_msgs::PoseStamped& p2){
+		double dx = p1.pose.position.x - p2.pose.position.x;
+		double dy = p1.pose.position.y - p2.pose.position.y;
+		return dx*dx +dy*dy;
+	  }
+
+	  void mapToWorld(double mx, double my, double& wx, double& wy);
+	  void clearRobotCell(const tf::Stamped<tf::Pose>& global_pose, unsigned int mx, unsigned int my);
+	  std::string tf_prefix_;
+	  boost::mutex mutex_;
   };
 };
 

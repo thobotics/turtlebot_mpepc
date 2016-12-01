@@ -23,7 +23,30 @@ namespace navfn {
 
 		NavfnROS::initialize(name, costmap_ros);
 
-		ROS_INFO("Initialize NavfnROSExt");
+		// Initialize for private copied variable
+
+		//get the tf prefix
+		ros::NodeHandle prefix_nh;
+		tf_prefix_ = tf::getPrefixParam(prefix_nh);
+
+
+		ROS_INFO("Initialized NavfnROSExt");
+	}
+
+	void NavfnROS::mapToWorld(double mx, double my, double& wx, double& wy) {
+	    costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
+	    wx = costmap->getOriginX() + mx * costmap->getResolution();
+	    wy = costmap->getOriginY() + my * costmap->getResolution();
+	}
+
+	void NavfnROS::clearRobotCell(const tf::Stamped<tf::Pose>& global_pose, unsigned int mx, unsigned int my){
+	    if(!initialized_){
+	      ROS_ERROR("This planner has not been initialized yet, but it is being used, please call initialize() before use");
+	      return;
+	    }
+
+	    //set the associated costs in the cost map to be free
+	    costmap_ros_->getCostmap()->setCost(mx, my, costmap_2d::FREE_SPACE);
 	}
 
 	bool NavfnROSExt::makePlan(const geometry_msgs::PoseStamped& start,
@@ -100,8 +123,8 @@ namespace navfn {
 	#endif
 
 		int map_start[2];
-		map_start[0] = mx;
-		map_start[1] = my;
+		map_start[0] = 0;//mx;
+		map_start[1] = 0;//my;
 
 		wx = goal.pose.position.x;
 		wy = goal.pose.position.y;
