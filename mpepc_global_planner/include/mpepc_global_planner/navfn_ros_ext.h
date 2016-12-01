@@ -34,8 +34,12 @@ namespace navfn {
 	   */
 	  bool getNavigationCost(mpepc_global_planner::GetNavCost::Request& req, mpepc_global_planner::GetNavCost::Response& resp);
 
+	  /**
+	   * Create a copy from NavfnROS
+	   * where change a little bit to support Navigation Cost service
+	   */
 	  bool makePlan(const geometry_msgs::PoseStamped& start,
-	        const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);
+			  const geometry_msgs::PoseStamped& goal, double tolerance, std::vector<geometry_msgs::PoseStamped>& plan);
   private:
 	  ros::ServiceServer cost_service_;
   };
