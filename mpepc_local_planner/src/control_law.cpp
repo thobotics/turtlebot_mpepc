@@ -8,7 +8,7 @@
 #include <mpepc_local_planner/control_law.h>
 #include <algorithm>
 
-namespace model_predictive_navigation
+namespace mpepc_local_planner
 {
   ControlLaw::ControlLaw()
   {

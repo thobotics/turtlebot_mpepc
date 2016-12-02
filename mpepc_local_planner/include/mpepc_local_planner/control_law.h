@@ -23,7 +23,7 @@
 #define R_SPEED_LIMIT 0.5
 
 using namespace std;
-namespace model_predictive_navigation
+namespace mpepc_local_planner
 {
   struct EgoPolar
   {

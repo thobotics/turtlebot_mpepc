@@ -12,6 +12,9 @@ find_package(catkin REQUIRED COMPONENTS
   roslib
   tf
   )
+  
+## System dependencies are found with CMake's conventions
+find_package(Boost REQUIRED COMPONENTS system thread)
 
 generate_dynamic_reconfigure_options(
   cfg/AckermannPlanner.cfg
@@ -21,6 +24,11 @@ generate_dynamic_reconfigure_options(
 add_message_files(
   FILES
   EgoGoal.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
 )
 
 include_directories(
@@ -41,6 +49,9 @@ add_dependencies(mpepc_local_planner
   ${catkin_EXPORTED_TARGETS})
 target_link_libraries(mpepc_local_planner 
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  control_law
+  nlopt
   )
 
 install(TARGETS mpepc_local_planner
