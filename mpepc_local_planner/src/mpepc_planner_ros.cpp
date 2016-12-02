@@ -45,6 +45,40 @@ PLUGINLIB_EXPORT_CLASS(mpepc_local_planner::MpepcPlannerROS, nav_core::BaseLocal
 
 namespace mpepc_local_planner {
 
+#define RATE_FACTOR 0.2
+#define DEFAULT_LOOP_RATE 10
+
+#define RESULT_BEGIN 1
+#define RESULT_SUCCESS 2
+#define RESULT_CANCEL 3
+
+// Trajectory Model Params
+#define K_1 1.2           // 2
+#define K_2 3             // 8
+#define BETA 0.4          // 0.5
+#define LAMBDA 2          // 3
+#define R_THRESH 0.05
+#define V_MAX 0.3         // 0.3
+#define V_MIN 0.0
+
+// Trajectory Optimization Params
+#define TIME_HORIZON 5.0
+#define DELTA_SIM_TIME 0.2
+#define SAFETY_ZONE 0.225
+#define WAYPOINT_THRESH 1.75
+
+// Cost function params
+static const double C1 = 0.05;
+static const double C2 = 2.5;
+static const double C3 = 0.05;        // 0.15
+static const double C4 = 0.05;        // 0.2 //turn
+static const double PHI_COL = 1.0;   // 0.4
+static const double SIGMA = 0.2;    // 0.10
+
+static const double PI= 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348;
+static const double TWO_PI= 6.2831853071795864769252867665590057683943387987502116419498891846156328125724179972560696;
+static const double minusPI= -3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348;
+
   MpepcPlannerROS::MpepcPlannerROS() : initialized_(false),
     goal_reached_(false) {
 
@@ -66,6 +100,8 @@ namespace mpepc_local_planner {
 			// make sure to update the costmap we'll use for this cycle
 			costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
 
+			// TODO: Is using odom ??
+			// Default use for compute called in isGoalReached and compute cmd_vel
 			std::string odom_topic;
 			private_nh.param<std::string>("odom_topic", odom_topic, "odom");
 			odom_helper_.setOdomTopic( odom_topic );
@@ -165,4 +201,118 @@ namespace mpepc_local_planner {
 
 	return -1;
   }
+
+  vector<MinDistResult> MpepcPlannerROS::find_points_within_threshold(Point newPoint, double threshold)
+  {
+    vector<MinDistResult> results;
+
+    flann::Matrix<float> query(new float[2], 1, 2);
+    query[0][0] = newPoint.a;
+    query[0][1] = newPoint.b;
+
+    std::vector< std::vector<int> > indices;
+    std::vector< std::vector<float> > dists;
+
+    flann::SearchParams params;
+    params.checks = 128;
+    params.max_neighbors = -1;
+    params.sorted = true;
+    // ROS_INFO("Do search");
+    {
+      boost::mutex::scoped_lock lock(cost_map_mutex_);
+      obs_tree->radiusSearch(query, indices, dists, threshold, params);
+
+      // ROS_INFO("Finished search");
+      for (int i = 0; i < indices[0].size(); i++)
+      {
+        MinDistResult result;
+        result.p = Point((*data)[indices[0][i]][0], (*data)[indices[0][i]][1]);
+        result.dist = static_cast<double>(dists[0][i]);
+        results.push_back(result);
+      }
+    }
+
+    delete[] query.ptr();
+    indices.clear();
+    dists.clear();
+
+    return results;
+  }
+
+  MinDistResult MpepcPlannerROS::find_nearest_neighbor(Point queryPoint)
+  {
+    MinDistResult results;
+
+    flann::Matrix<float> query(new float[2], 1, 2);
+    query[0][0] = queryPoint.a;
+    query[0][1] = queryPoint.b;
+
+    std::vector< std::vector<int> > indices;
+    std::vector< std::vector<float> > dists;
+
+    flann::SearchParams params;
+    params.checks = 128;
+    params.sorted = true;
+
+    {
+      boost::mutex::scoped_lock lock(cost_map_mutex_);
+      obs_tree->knnSearch(query, indices, dists, 1, params);
+      results.p = Point((*data)[indices[0][0]][0], (*data)[indices[0][0]][1]);
+      results.dist = static_cast<double>(dists[0][0]);
+    }
+
+    MinDistResult tempResults;
+    tempResults.p = Point(cost_map.cells[indices[0][0]].x, cost_map.cells[indices[0][0]].y);
+
+    delete[] query.ptr();
+    indices.clear();
+    dists.clear();
+
+    return results;
+  }
+
+  double MpepcPlannerROS::min_distance_to_obstacle(geometry_msgs::Pose local_current_pose, double *heading)
+  {
+    // ROS_INFO("In minDist Function");
+    Point global(local_current_pose.position.x, local_current_pose.position.y);
+    MinDistResult nn_graph_point = find_nearest_neighbor(global);
+
+    double minDist = 100000;
+    double head = 0;
+
+    double SOME_THRESH = 1.5;
+
+    if(nn_graph_point.dist < SOME_THRESH)
+    {
+      int min_i = 0;
+      vector<MinDistResult> distResult;
+      distResult = find_points_within_threshold(global, 1.1*SOME_THRESH);
+
+      //ROS_INFO("Loop through %d points from radius search", distResult.size());
+      for (unsigned int i = 0 ; i < distResult.size() && minDist > 0; i++)
+      {
+        double dist = distance(local_current_pose.position.x, local_current_pose.position.y, cost_map.cells[i].x, cost_map.cells[i].y);
+        if (dist < minDist)
+        {
+          minDist = dist;
+          min_i = i;
+        }
+      }
+
+      // ROS_INFO("Calculate heading");
+      head = tf::getYaw(local_current_pose.orientation) - atan2(cost_map.cells[min_i].y - local_current_pose.position.y, cost_map.cells[min_i].x - local_current_pose.position.x);
+      head = mod(head + PI, TWO_PI) - PI;
+      //ROS_INFO("Got nearest radius neighbor, poly dist: %f", minDist);
+    }
+    else
+    {
+      minDist = distance(local_current_pose.position.x, local_current_pose.position.y, nn_graph_point.p.a, nn_graph_point.p.b);
+      //ROS_INFO("Got nearest neighbor, poly dist: %f", minDist);
+    }
+
+    *heading = head;
+
+    return minDist;
+  }
+
 };

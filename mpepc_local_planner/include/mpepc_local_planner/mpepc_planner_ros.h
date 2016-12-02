@@ -41,6 +41,17 @@
 #include <costmap_2d/costmap_2d_ros.h>
 #include <nav_core/base_local_planner.h>
 #include <base_local_planner/latched_stop_rotate_controller.h>
+#include <mpepc_local_planner/control_law.h>
+#include <mpepc_local_planner/EgoGoal.h>
+#include <math.h>
+#include <string>
+#include <vector>
+
+#include <boost/shared_ptr.hpp>
+#include <boost/thread.hpp>
+
+#include <nlopt.hpp>
+#include "flann/flann.hpp"
 
 namespace mpepc_local_planner {
   /**
@@ -91,6 +102,9 @@ namespace mpepc_local_planner {
       virtual bool isGoalReached();
 
     private:
+      bool isInitialized() {
+    	  return initialized_;
+	  }
       bool initialized_;
 	  bool goal_reached_;
 	  tf::TransformListener* tf_;
@@ -104,13 +118,84 @@ namespace mpepc_local_planner {
 
 	  ros::ServiceClient navfn_cost_;
 
-	  bool isInitialized() {
-		  return initialized_;
-	  }
+	  // Properties for mpepc optimization
+	  boost::mutex pose_mutex_, cost_map_mutex_;
+	  ControlLaw * cl;
+
+	  flann::Index<flann::L2<float> > * obs_tree;
+	  flann::Matrix<float> * data;
+	  int trajectory_count;
+
+	  double map_resolution;
+	  double interp_rotation_factor;
 
 	  // Function for mpepc optimization
 	  double getGlobalPlannerCost(geometry_msgs::Point &world_point);
+	  vector<MinDistResult> find_points_within_threshold(Point newPoint, double threshold);
+	  MinDistResult find_nearest_neighbor(Point queryPoint);
+	  double min_distance_to_obstacle(geometry_msgs::Pose local_current_pose, double *heading);
   };
 
+  struct Point {
+    float a;
+    float b;
+    int member;
+    int p_idx;
+    Point(float x, float y) : a(x), b(y), member(-1), p_idx(0) {}
+    Point() : a(0), b(0), member(-1), p_idx(0) {}
+    inline bool operator==(Point p) {
+       if (p.a == a && p.b == b)
+          return true;
+       else
+          return false;
+    }
+  };
+
+  struct MinDistResult {
+    Point p;
+    double dist;
+  };
+
+  double mod(double x, double y)
+  {
+    double m= x - y * floor(x/y);
+    // handle boundary cases resulted from floating-point cut off:
+    if (y > 0)              // modulo range: [0..y)
+    {
+      if (m >= y)           // Mod(-1e-16             , 360.    ): m= 360.
+        return 0;
+
+      if (m < 0)
+      {
+        if (y+m == y)
+          return 0;     // just in case...
+        else
+          return y+m;  // Mod(106.81415022205296 , _TWO_PI ): m= -1.421e-14
+      }
+    }
+    else                    // modulo range: (y..0]
+    {
+      if (m <= y)           // Mod(1e-16              , -360.   ): m= -360.
+        return 0;
+
+      if (m>0 )
+      {
+        if (y+m == y)
+          return 0;    // just in case...
+        else
+          return y+m;  // Mod(-106.81415022205296, -_TWO_PI): m= 1.421e-14
+      }
+    }
+
+    return m;
+  }
+
+  double distance(double pose_x, double pose_y, double obx, double oby)
+  {
+    double diffx = obx - pose_x;
+    double diffy = oby - pose_y;
+    double dist = sqrt(diffx*diffx + diffy*diffy);
+    return dist;
+  }
 };
 #endif
