@@ -17,10 +17,20 @@ generate_dynamic_reconfigure_options(
   cfg/AckermannPlanner.cfg
 )
 
+## Generate messages in the 'msg' folder
+add_message_files(
+  FILES
+  EgoGoal.msg
+)
+
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   )
+
+add_library(control_law 
+	src/control_law.cpp
+)
 
 add_library(mpepc_local_planner
   src/mpepc_planner_ros.cpp
