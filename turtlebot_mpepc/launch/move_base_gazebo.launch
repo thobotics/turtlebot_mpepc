@@ -21,7 +21,7 @@
   </include>
 
   <!-- start up rviz unless visualization is set to false -->
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlebot_stage)/rviz/robot_navigation.rviz"/>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlebot_mpepc)/rviz/mpepc_gazebo.rviz"/>
   
   <!--  ****** Move_base ******  -->
   <include file="$(find turtlebot_mpepc)/launch/includes/move_base.launch.xml"/>
