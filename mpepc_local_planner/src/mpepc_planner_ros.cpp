@@ -79,6 +79,8 @@ static const double PI= 3.141592653589793238462643383279502884197169399375105820
 static const double TWO_PI= 6.2831853071795864769252867665590057683943387987502116419498891846156328125724179972560696;
 static const double minusPI= -3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348;
 
+char* MpepcPlannerROS::cost_translation_table_ = NULL;
+
   MpepcPlannerROS::MpepcPlannerROS() : initialized_(false),
     goal_reached_(false) {
 
@@ -98,13 +100,33 @@ static const double minusPI= -3.141592653589793238462643383279502884197169399375
 			costmap_ros_ = costmap_ros;
 
 			// make sure to update the costmap we'll use for this cycle
-			costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
+			// costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
 
 			// TODO: Is using odom ??
 			// Default use for compute called in isGoalReached and compute cmd_vel
 			std::string odom_topic;
 			private_nh.param<std::string>("odom_topic", odom_topic, "odom");
 			odom_helper_.setOdomTopic( odom_topic );
+
+			// For compute obstacle tree
+			// NOTE: Copy from costmap_2d_publisher.
+			if (cost_translation_table_ == NULL)
+			{
+				cost_translation_table_ = new char[256];
+
+				// special values:
+				cost_translation_table_[0] = 0;  // NO obstacle
+				cost_translation_table_[253] = 99;  // INSCRIBED obstacle
+				cost_translation_table_[254] = 100;  // LETHAL obstacle
+				cost_translation_table_[255] = -1;  // UNKNOWN
+
+				// regular cost values scale the range 1 to 252 (inclusive) to fit
+				// into 1 to 98 (inclusive).
+				for (int i = 1; i < 253; i++)
+				{
+				  cost_translation_table_[ i ] = char(1 + (97 * (i - 1)) / 251);
+				}
+			}
 
 			navfn_cost_ = private_nh.serviceClient<mpepc_global_planner::GetNavCost>("/move_base/NavfnROSExt/nav_cost");
 
@@ -163,6 +185,11 @@ static const double minusPI= -3.141592653589793238462643383279502884197169399375
 		cmd_vel.angular.z = 0;
 		goal_reached_ = false;
 
+		/**
+		 * TODO: Clear below and Apply real local plan
+		 * ---------------- START TESTING ----------------
+		 */
+
 		// Get robot pose
 		tf::Stamped<tf::Pose> robot_pose;
 		costmap_ros_->getRobotPose(robot_pose);
@@ -171,14 +198,28 @@ static const double minusPI= -3.141592653589793238462643383279502884197169399375
 		tf::poseStampedTFToMsg(robot_pose, temp);
 
 		geometry_msgs::PoseStamped start;
-		tf_->transformPose("/map", temp, start);
-		//start = temp;
+		try{
+			//tf_->waitForTransform("/map", costmap_ros_->getGlobalFrameID(), ros::Time(0), ros::Duration(10.0));
+			tf_->transformPose("/map", temp, start);
+		}catch (tf::TransformException & ex){
+			ROS_ERROR("Transform exception : %s", ex.what());
+		}
 
 		geometry_msgs::Point currentPoint;
 		currentPoint = start.pose.position;
 
 		double cost = getGlobalPlannerCost(currentPoint);
 
+		// Must update Obstacle Tree before calculate minimum distance to obstacle
+		updateObstacleTree(costmap_ros_->getCostmap());
+		double obstacle_heading = 0.0;
+		double minDist = min_distance_to_obstacle(temp.pose, &obstacle_heading);
+
+		ROS_INFO("Min distance of %f, %f: %f", temp.pose.position.x, temp.pose.position.y, minDist);
+
+		/*
+		 * -------------------- END --------------------
+		 */
 		return true;
   }
 
@@ -200,6 +241,73 @@ static const double minusPI= -3.141592653589793238462643383279502884197169399375
 	}
 
 	return -1;
+  }
+
+  void MpepcPlannerROS::updateObstacleTree(costmap_2d::Costmap2D *costmap){
+
+	// Create occupancy grid message
+	// Copy from costmap_2d_publisher.cpp
+	nav_msgs::OccupancyGrid::_info_type::_resolution_type resolution = costmap->getResolution();
+	nav_msgs::OccupancyGrid::_info_type::_width_type width = costmap->getSizeInCellsX();
+	nav_msgs::OccupancyGrid::_info_type::_height_type height = costmap->getSizeInCellsY();
+	double wx, wy;
+	costmap->mapToWorld(0, 0, wx, wy);
+	nav_msgs::OccupancyGrid::_info_type::_origin_type::_position_type::_x_type x = wx - resolution / 2;
+	nav_msgs::OccupancyGrid::_info_type::_origin_type::_position_type::_y_type y = wy - resolution / 2;
+	nav_msgs::OccupancyGrid::_info_type::_origin_type::_position_type::_z_type z = 0.0;
+	nav_msgs::OccupancyGrid::_info_type::_origin_type::_orientation_type::_w_type w = 1.0;
+
+	nav_msgs::OccupancyGrid::_data_type grid_data;
+	grid_data.resize(width * height);
+
+	unsigned char* charData = costmap->getCharMap();
+	for (unsigned int i = 0; i < grid_data.size(); i++)
+	{
+		grid_data[i] = cost_translation_table_[ charData[ i ]];
+	}
+
+	// Copy from costmap_translator
+	nav_msgs::GridCells obstacles;
+	obstacles.cell_width = resolution;
+	obstacles.cell_height = resolution;
+	for (unsigned int i = 0 ; i < height; ++i)
+	{
+		for(unsigned int j = 0; j < width; ++j)
+		{
+		  if(grid_data[i*height+j] == 100)
+		  {
+			geometry_msgs::Point obstacle_coordinates;
+			obstacle_coordinates.x = (j * obstacles.cell_height) + x + (resolution/2.0);
+			obstacle_coordinates.y = (i * obstacles.cell_width) + y + (resolution/2.0);
+			obstacle_coordinates.z = 0;
+			obstacles.cells.push_back(obstacle_coordinates);
+		  }
+		}
+	}
+
+	// Copy from nav_cb
+	cost_map = obstacles;
+
+	if(cost_map.cells.size() > 0)
+	{
+		delete obs_tree;
+		delete data;
+		data = new flann::Matrix<float>(new float[obstacles.cells.size()*2], obstacles.cells.size(), 2);
+
+		for (size_t i = 0; i < data->rows; ++i)
+		{
+		  for (size_t j = 0; j < data->cols; ++j)
+		  {
+			if (j == 0)
+			  (*data)[i][j] = cost_map.cells[i].x;
+			else
+			  (*data)[i][j] = cost_map.cells[i].y;
+		  }
+		}
+		// Obstacle index for fast nearest neighbor search
+		obs_tree = new flann::Index<flann::L2<float> >(*data, flann::KDTreeIndexParams(4));
+		obs_tree->buildIndex();
+	}
   }
 
   vector<MinDistResult> MpepcPlannerROS::find_points_within_threshold(Point newPoint, double threshold)
