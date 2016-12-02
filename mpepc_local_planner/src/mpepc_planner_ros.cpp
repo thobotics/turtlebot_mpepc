@@ -141,22 +141,28 @@ namespace mpepc_local_planner {
 		geometry_msgs::Point currentPoint;
 		currentPoint = start.pose.position;
 
-		mpepc_global_planner::GetNavCost service;
-		service.request.world_point = currentPoint;
-
-
-		if (navfn_cost_.call(service))
-		{
-			ROS_INFO("Response cost at %f %f : %f",
-					currentPoint.x, currentPoint.y,
-					(double)service.response.cost);
-			return true;
-		}
-		else
-		{
-			ROS_ERROR("Failed to call service");
-		}
+		double cost = getGlobalPlannerCost(currentPoint);
 
 		return true;
+  }
+
+  double MpepcPlannerROS::getGlobalPlannerCost(geometry_msgs::Point &world_point){
+	mpepc_global_planner::GetNavCost service;
+	service.request.world_point = world_point;
+
+
+	if (navfn_cost_.call(service))
+	{
+		ROS_INFO("Response cost at %f %f : %f",
+				world_point.x, world_point.y,
+				(double)service.response.cost);
+		return (double)service.response.cost;
+	}
+	else
+	{
+		ROS_ERROR("Failed to call service");
+	}
+
+	return -1;
   }
 };

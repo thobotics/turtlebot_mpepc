@@ -92,21 +92,24 @@ namespace mpepc_local_planner {
 
     private:
       bool initialized_;
-	      bool goal_reached_;
-	      tf::TransformListener* tf_;
-	      std::vector<geometry_msgs::PoseStamped> global_plan_;
-	      base_local_planner::OdometryHelperRos odom_helper_;
+	  bool goal_reached_;
+	  tf::TransformListener* tf_;
+	  std::vector<geometry_msgs::PoseStamped> global_plan_;
+	  base_local_planner::OdometryHelperRos odom_helper_;
 
-	      // for visualization, publishers of global and local plan
-		  ros::Publisher g_plan_pub_, l_plan_pub_;
+	  // for visualization, publishers of global and local plan
+	  ros::Publisher g_plan_pub_, l_plan_pub_;
 
-		  costmap_2d::Costmap2DROS* costmap_ros_;
+	  costmap_2d::Costmap2DROS* costmap_ros_;
 
-		  ros::ServiceClient navfn_cost_;
+	  ros::ServiceClient navfn_cost_;
 
-	      bool isInitialized() {
-			  return initialized_;
-	      }
+	  bool isInitialized() {
+		  return initialized_;
+	  }
+
+	  // Function for mpepc optimization
+	  double getGlobalPlannerCost(geometry_msgs::Point &world_point);
   };
 
 };
