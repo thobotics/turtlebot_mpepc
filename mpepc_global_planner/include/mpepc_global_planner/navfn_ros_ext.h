@@ -11,19 +11,6 @@
 #include <navfn/navfn_ros.h>
 #include <mpepc_global_planner/GetNavCost.h>
 
-#include <ros/ros.h>
-#include <navfn/navfn.h>
-#include <costmap_2d/costmap_2d.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/Point.h>
-#include <nav_msgs/Path.h>
-#include <tf/transform_datatypes.h>
-#include <vector>
-#include <nav_core/base_global_planner.h>
-#include <nav_msgs/GetPlan.h>
-#include <navfn/potarr_point.h>
-#include <pcl_ros/publisher.h>
-
 namespace navfn {
 /**
    * @class NavfnROS
@@ -59,21 +46,6 @@ namespace navfn {
 			  const geometry_msgs::PoseStamped& goal, double tolerance, std::vector<geometry_msgs::PoseStamped>& plan);
   private:
 	  ros::ServiceServer cost_service_;
-
-	  /**
-	   * Copy from NavfnROS to make makePlan work
-	   */
-	  inline double sq_distance(const geometry_msgs::PoseStamped& p1, const geometry_msgs::PoseStamped& p2){
-		double dx = p1.pose.position.x - p2.pose.position.x;
-		double dy = p1.pose.position.y - p2.pose.position.y;
-		return dx*dx +dy*dy;
-	  }
-
-	  void mapToWorld(double mx, double my, double& wx, double& wy);
-	  void clearRobotCell(const tf::Stamped<tf::Pose>& global_pose, unsigned int mx, unsigned int my);
-	  double default_tolerance_;
-	  std::string tf_prefix_;
-	  boost::mutex mutex_;
   };
 };
 
