@@ -33,17 +33,10 @@ namespace navfn {
 
 	  /**
 	   * This is important !!!. Move_base call this, need to force this
-	   * call edited NavfnROSExt
+	   * call swapped makePlan
 	   */
 	  bool makePlan(const geometry_msgs::PoseStamped& start,
 			  const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);
-
-	  /**
-	   * Create a copy from NavfnROS
-	   * where change a little bit to support Navigation Cost service
-	   */
-	  bool makePlan(const geometry_msgs::PoseStamped& start,
-			  const geometry_msgs::PoseStamped& goal, double tolerance, std::vector<geometry_msgs::PoseStamped>& plan);
   private:
 	  ros::ServiceServer cost_service_;
   };
