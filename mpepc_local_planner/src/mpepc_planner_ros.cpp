@@ -135,8 +135,8 @@ namespace mpepc_local_planner {
 		tf::poseStampedTFToMsg(robot_pose, temp);
 
 		geometry_msgs::PoseStamped start;
-		//tf_->transformPose("/map", temp, start);
-		start = temp;
+		tf_->transformPose("/map", temp, start);
+		//start = temp;
 
 		geometry_msgs::Point currentPoint;
 		currentPoint = start.pose.position;

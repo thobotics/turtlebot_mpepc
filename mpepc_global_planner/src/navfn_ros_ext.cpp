@@ -6,6 +6,12 @@
  */
 
 #include <mpepc_global_planner/navfn_ros_ext.h>
+#include <pluginlib/class_list_macros.h>
+#include <tf/transform_listener.h>
+#include <costmap_2d/cost_values.h>
+#include <costmap_2d/costmap_2d.h>
+
+#include <pcl_conversions/pcl_conversions.h>
 
 //register this planner as a BaseGlobalPlanner plugin
 PLUGINLIB_DECLARE_CLASS(navfn, NavfnROSExt, navfn::NavfnROSExt, nav_core::BaseGlobalPlanner)
@@ -25,21 +31,25 @@ namespace navfn {
 
 		// Initialize for private copied variable
 
+		//get params
+		private_nh.param("default_tolerance", default_tolerance_, 0.0);
+
 		//get the tf prefix
 		ros::NodeHandle prefix_nh;
 		tf_prefix_ = tf::getPrefixParam(prefix_nh);
 
 
+
 		ROS_INFO("Initialized NavfnROSExt");
 	}
 
-	void NavfnROS::mapToWorld(double mx, double my, double& wx, double& wy) {
+	void NavfnROSExt::mapToWorld(double mx, double my, double& wx, double& wy) {
 	    costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
 	    wx = costmap->getOriginX() + mx * costmap->getResolution();
 	    wy = costmap->getOriginY() + my * costmap->getResolution();
 	}
 
-	void NavfnROS::clearRobotCell(const tf::Stamped<tf::Pose>& global_pose, unsigned int mx, unsigned int my){
+	void NavfnROSExt::clearRobotCell(const tf::Stamped<tf::Pose>& global_pose, unsigned int mx, unsigned int my){
 	    if(!initialized_){
 	      ROS_ERROR("This planner has not been initialized yet, but it is being used, please call initialize() before use");
 	      return;
@@ -47,6 +57,11 @@ namespace navfn {
 
 	    //set the associated costs in the cost map to be free
 	    costmap_ros_->getCostmap()->setCost(mx, my, costmap_2d::FREE_SPACE);
+	}
+
+	bool NavfnROSExt::makePlan(const geometry_msgs::PoseStamped& start,
+				  const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan){
+		return makePlan(start, goal, default_tolerance_, plan); // makePlan of child class
 	}
 
 	bool NavfnROSExt::makePlan(const geometry_msgs::PoseStamped& start,
@@ -234,22 +249,10 @@ namespace navfn {
 	}
 
 	bool NavfnROSExt::getNavigationCost(mpepc_global_planner::GetNavCost::Request& req, mpepc_global_planner::GetNavCost::Response& resp){
-		/*geometry_msgs::PoseStamped start;
-		// Get robot pose
-		tf::Stamped<tf::Pose> robot_pose;
-		costmap_ros_->getRobotPose(robot_pose);
-		tf::poseStampedTFToMsg(robot_pose, start);
-
-		geometry_msgs::Point currentPoint;
-		currentPoint = start.pose.position;
-
-		ROS_INFO("Receieved %f, %f", currentPoint.x, currentPoint.y);*/
-
 		geometry_msgs::Point current_point = req.world_point;
-		if(validPointPotential(current_point))
-			resp.cost =  getPointPotential(current_point);
-		else
-			resp.cost = -1;
+		if(!validPointPotential(current_point))
+			ROS_WARN("Non-valid point to get potential cost");
+		resp.cost =  getPointPotential(current_point);
 		return true;
 	}
 

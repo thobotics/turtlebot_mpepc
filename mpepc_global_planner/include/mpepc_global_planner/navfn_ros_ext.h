@@ -9,11 +9,20 @@
 #define TURTLEBOT_MPEPC_INCLUDE_TURTLEBOT_MPEPC_NAVFN_ROS_EXT_H_
 
 #include <navfn/navfn_ros.h>
-#include <pluginlib/class_list_macros.h>
-#include <tf/transform_listener.h>
-#include <costmap_2d/cost_values.h>
-#include <costmap_2d/costmap_2d.h>
 #include <mpepc_global_planner/GetNavCost.h>
+
+#include <ros/ros.h>
+#include <navfn/navfn.h>
+#include <costmap_2d/costmap_2d.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Point.h>
+#include <nav_msgs/Path.h>
+#include <tf/transform_datatypes.h>
+#include <vector>
+#include <nav_core/base_global_planner.h>
+#include <nav_msgs/GetPlan.h>
+#include <navfn/potarr_point.h>
+#include <pcl_ros/publisher.h>
 
 namespace navfn {
 /**
@@ -33,6 +42,14 @@ namespace navfn {
 	   * Service call back
 	   */
 	  bool getNavigationCost(mpepc_global_planner::GetNavCost::Request& req, mpepc_global_planner::GetNavCost::Response& resp);
+
+
+	  /**
+	   * This is important !!!. Move_base call this, need to force this
+	   * call edited NavfnROSExt
+	   */
+	  bool makePlan(const geometry_msgs::PoseStamped& start,
+			  const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);
 
 	  /**
 	   * Create a copy from NavfnROS
@@ -54,6 +71,7 @@ namespace navfn {
 
 	  void mapToWorld(double mx, double my, double& wx, double& wy);
 	  void clearRobotCell(const tf::Stamped<tf::Pose>& global_pose, unsigned int mx, unsigned int my);
+	  double default_tolerance_;
 	  std::string tf_prefix_;
 	  boost::mutex mutex_;
   };
