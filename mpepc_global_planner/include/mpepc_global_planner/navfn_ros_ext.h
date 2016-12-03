@@ -39,6 +39,9 @@ namespace navfn {
 			  const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);
   private:
 	  ros::ServiceServer cost_service_;
+
+	  double map_resolution;
+	  double interp_rotation_factor;
   };
 };
 
