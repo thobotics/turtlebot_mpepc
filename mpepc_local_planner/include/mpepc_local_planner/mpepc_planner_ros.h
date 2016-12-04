@@ -201,12 +201,20 @@ namespace mpepc_local_planner {
 
 	  static char* cost_translation_table_;
 
+	  geometry_msgs::Pose getCurrentRobotPose();
+
 	  // Function for mpepc optimization
-	  double getGlobalPlannerCost(geometry_msgs::Point &world_point);
+	  double getGlobalPlannerCost(geometry_msgs::Pose local_pose);
 	  void updateObstacleTree(costmap_2d::Costmap2D *costmap);
 	  vector<MinDistResult> find_points_within_threshold(Point newPoint, double threshold);
 	  MinDistResult find_nearest_neighbor(Point queryPoint);
 	  double min_distance_to_obstacle(geometry_msgs::Pose local_current_pose, double *heading);
+
+	  // Use NLOPT to find the next subgoal for the trajectory generator
+	  void find_intermediate_goal_params(EgoGoal *next_step);
+	  double score_trajectory(const std::vector<double> &x, std::vector<double> &grad, void* f_data);
+	  // This function is used by the optimizer to score different trajectories
+	  double sim_trajectory(double r, double delta, double theta, double vMax, double time_horizon);
   };
 };
 #endif

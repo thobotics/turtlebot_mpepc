@@ -191,31 +191,16 @@ char* MpepcPlannerROS::cost_translation_table_ = NULL;
 		 */
 
 		// Get robot pose
-		tf::Stamped<tf::Pose> robot_pose;
-		costmap_ros_->getRobotPose(robot_pose);
+		geometry_msgs::Pose currentPose = getCurrentRobotPose();
 
-		geometry_msgs::PoseStamped temp;
-		tf::poseStampedTFToMsg(robot_pose, temp);
-
-		geometry_msgs::PoseStamped start;
-		try{
-			//tf_->waitForTransform("/map", costmap_ros_->getGlobalFrameID(), ros::Time(0), ros::Duration(10.0));
-			tf_->transformPose("/map", temp, start);
-		}catch (tf::TransformException & ex){
-			ROS_ERROR("Transform exception : %s", ex.what());
-		}
-
-		geometry_msgs::Point currentPoint;
-		currentPoint = start.pose.position;
-
-		double cost = getGlobalPlannerCost(currentPoint);
+		double cost = getGlobalPlannerCost(currentPose);
 
 		// Must update Obstacle Tree before calculate minimum distance to obstacle
 		updateObstacleTree(costmap_ros_->getCostmap());
 		double obstacle_heading = 0.0;
-		double minDist = min_distance_to_obstacle(temp.pose, &obstacle_heading);
+		double minDist = min_distance_to_obstacle(currentPose, &obstacle_heading);
 
-		ROS_INFO("Min distance of %f, %f: %f", temp.pose.position.x, temp.pose.position.y, minDist);
+		ROS_INFO("Min distance of %f, %f: %f", currentPose.position.x, currentPose.position.y, minDist);
 
 		/*
 		 * -------------------- END --------------------
@@ -223,15 +208,45 @@ char* MpepcPlannerROS::cost_translation_table_ = NULL;
 		return true;
   }
 
-  double MpepcPlannerROS::getGlobalPlannerCost(geometry_msgs::Point &world_point){
-	mpepc_global_planner::GetNavCost service;
-	service.request.world_point = world_point;
+  geometry_msgs::Pose MpepcPlannerROS::getCurrentRobotPose(){
+	// Get robot pose from local cost_map
+	tf::Stamped<tf::Pose> robot_pose;
+	costmap_ros_->getRobotPose(robot_pose);
 
+	geometry_msgs::PoseStamped result;
+	tf::poseStampedTFToMsg(robot_pose, result);
+
+	return result.pose;
+  }
+
+  double MpepcPlannerROS::getGlobalPlannerCost(geometry_msgs::Pose local_pose){
+	// Transform to global_pose
+	geometry_msgs::PoseStamped local_pose_stamp;
+	local_pose_stamp.header.frame_id = costmap_ros_->getGlobalFrameID();
+	// This is important!!!
+	// It make transformPose to lookup the latest available transform
+	local_pose_stamp.header.stamp = ros::Time(0);
+	local_pose_stamp.pose = local_pose;
+
+	geometry_msgs::PoseStamped global_pose_stamp;
+	try{
+		tf_->waitForTransform("/map", costmap_ros_->getGlobalFrameID(), ros::Time(0), ros::Duration(10.0));
+		tf_->transformPose("/map", local_pose_stamp, global_pose_stamp);
+	}catch (tf::TransformException & ex){
+		ROS_ERROR("Transform exception : %s", ex.what());
+	}
+
+	geometry_msgs::Point currentPoint;
+	currentPoint = global_pose_stamp.pose.position;
+
+	// Service request
+	mpepc_global_planner::GetNavCost service;
+	service.request.world_point = currentPoint;
 
 	if (navfn_cost_.call(service))
 	{
 		ROS_INFO("Response cost at %f %f : %f",
-				world_point.x, world_point.y,
+				currentPoint.x, currentPoint.y,
 				(double)service.response.cost);
 		return (double)service.response.cost;
 	}
@@ -421,6 +436,105 @@ char* MpepcPlannerROS::cost_translation_table_ = NULL;
     *heading = head;
 
     return minDist;
+  }
+
+  double MpepcPlannerROS::sim_trajectory(double r, double delta, double theta, double vMax, double time_horizon){
+	// Get robot pose from local cost map
+	// TODO: Change this to getCurrentRobotPose.
+	// 1. Why need to change this? Ans: May be it help for faster reading current pose,
+	// but not sure because getCurrentRobotPose use transform instead of callback in Odom.
+	// 2. Why not change it now? Ans: Because it may need to change other file: control_law, ...
+
+	nav_msgs::Odometry sim_pose;
+	odom_helper_.getOdom(sim_pose);
+
+	EgoPolar sim_goal;
+	sim_goal.r = r;
+	sim_goal.delta = delta;
+	sim_goal.theta = theta;
+
+	geometry_msgs::Pose current_goal = cl->convert_from_egopolar(sim_pose, sim_goal);
+
+	double SIGMA_DENOM = pow(SIGMA, 2);
+
+	double sim_clock = 0.0;
+
+	geometry_msgs::Twist sim_cmd_vel;
+	double current_yaw = tf::getYaw(sim_pose.pose.pose.orientation);
+	geometry_msgs::Point collisionPoint;
+	bool collision_detected = false;
+
+	double expected_progress = 0.0;
+	double expected_action = 0.0;
+	double expected_collision = 0.0;
+
+	double nav_fn_t0 = 0;
+	double nav_fn_t1 = 0;
+	double collision_prob = 0.0;
+	double survivability = 1.0;
+	double obstacle_heading = 0.0;
+
+	while (sim_clock < time_horizon)
+	{
+	  // Get Velocity Commands
+	  sim_cmd_vel = cl->get_velocity_command(sim_goal, vMax);
+
+	  // get navigation function at orig pose
+	  nav_fn_t0 = getGlobalPlannerCost(sim_pose.pose.pose);
+
+	  // Update pose
+	  current_yaw = current_yaw + (sim_cmd_vel.angular.z * DELTA_SIM_TIME);
+	  sim_pose.pose.pose.position.x = sim_pose.pose.pose.position.x + (sim_cmd_vel.linear.x * DELTA_SIM_TIME * cos(current_yaw));
+	  sim_pose.pose.pose.position.y = sim_pose.pose.pose.position.y + (sim_cmd_vel.linear.x * DELTA_SIM_TIME * sin(current_yaw));
+	  sim_pose.pose.pose.orientation = tf::createQuaternionMsgFromYaw(current_yaw);
+
+	  // Get navigation function at new pose
+	  nav_fn_t1 = getGlobalPlannerCost(sim_pose.pose.pose);
+
+	  double minDist = min_distance_to_obstacle(sim_pose.pose.pose, &obstacle_heading);
+
+	  if (minDist <= SAFETY_ZONE)
+	  {
+		// ROS_INFO("Collision Detected");
+		collision_detected = true;
+	  }
+
+	  // Get collision probability
+	  if (!collision_detected)
+	  {
+		collision_prob = exp(-1*pow(minDist, 2)/SIGMA_DENOM);  // sigma^2
+	  }
+	  else
+	  {
+		collision_prob = 1;
+	  }
+
+	  // Get survivability
+	  survivability = survivability*(1 - collision_prob);
+
+	  expected_collision = expected_collision + ((1-survivability) * C2);
+
+	  // Get progress cost
+	  expected_progress = expected_progress + (survivability * (nav_fn_t1 - nav_fn_t0));
+
+	  // Get action cost
+	  expected_action = expected_action + (C3 * pow(sim_cmd_vel.linear.x, 2) + C4 * pow(sim_cmd_vel.angular.z, 2))*DELTA_SIM_TIME;
+
+	  // Calculate new EgoPolar coords for goal
+	  sim_goal = cl->convert_to_egopolar(sim_pose, current_goal);
+
+	  sim_clock = sim_clock + DELTA_SIM_TIME;
+	}
+
+	// Update with angle heuristic - weighted difference between final pose and gradient of navigation function
+	double gradient_angle = getGlobalPlannerCost(sim_pose.pose.pose);
+
+	expected_progress = expected_progress + C1 * abs(tf::getYaw(sim_pose.pose.pose.orientation) - gradient_angle);
+
+	++trajectory_count;
+
+	// SUM collision cost, progress cost, action cost
+	return (expected_collision + expected_progress + expected_action);
   }
 
 };
