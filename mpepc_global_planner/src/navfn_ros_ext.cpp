@@ -45,7 +45,11 @@ namespace navfn {
 	bool NavfnROSExt::getNavigationCost(mpepc_global_planner::GetNavCost::Request& req, mpepc_global_planner::GetNavCost::Response& resp){
 		geometry_msgs::Point position = req.world_point;
 
-		costmap_2d::Costmap2D * temp_costmap;
+		//if(!validPointPotential(position))
+		//	ROS_WARN("Non-valid point to get potential cost");
+		resp.cost =  getPointPotential(position);
+
+		/*costmap_2d::Costmap2D * temp_costmap;
 		temp_costmap = costmap_ros_->getCostmap();
 
 		// find world coords of current cell
@@ -81,11 +85,7 @@ namespace navfn {
 		double a01 = cost90 - cost180;
 		double a11 = cost180 - cost270 - cost90 + cost0;
 
-		resp.cost = a00 + a10*rotPoint.x + a01*rotPoint.y + a11*rotPoint.x*rotPoint.y;
-
-		/*if(!validPointPotential(current_point))
-			ROS_WARN("Non-valid point to get potential cost");
-		resp.cost =  getPointPotential(current_point);*/
+		resp.cost = a00 + a10*rotPoint.x + a01*rotPoint.y + a11*rotPoint.x*rotPoint.y;*/
 
 		return true;
 	}
