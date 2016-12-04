@@ -67,12 +67,12 @@ namespace mpepc_local_planner
     return mod(angle + _PI, _TWO_PI) - _PI;
   }
 
-  double ControlLaw::get_ego_distance(nav_msgs::Odometry current_pose, geometry_msgs::Pose current_goal_pose)
+  double ControlLaw::get_ego_distance(geometry_msgs::Pose current_pose, geometry_msgs::Pose current_goal_pose)
   {
     double distance;
 
-    double dx = current_goal_pose.position.x - current_pose.pose.pose.position.x;
-    double dy = current_goal_pose.position.y - current_pose.pose.pose.position.y;
+    double dx = current_goal_pose.position.x - current_pose.position.x;
+    double dy = current_goal_pose.position.y - current_pose.position.y;
 
     // calculate distance compenent of egocentric coordinates
     distance = sqrt(pow(dx, 2) + pow(dy, 2));
@@ -81,14 +81,14 @@ namespace mpepc_local_planner
   }
 
 
-  EgoPolar ControlLaw::convert_to_egopolar(nav_msgs::Odometry current_pose, geometry_msgs::Pose current_goal_pose)
+  EgoPolar ControlLaw::convert_to_egopolar(geometry_msgs::Pose current_pose, geometry_msgs::Pose current_goal_pose)
   {
     EgoPolar coords;
 
-    double dx = current_goal_pose.position.x - current_pose.pose.pose.position.x;
-    double dy = current_goal_pose.position.y - current_pose.pose.pose.position.y;
+    double dx = current_goal_pose.position.x - current_pose.position.x;
+    double dy = current_goal_pose.position.y - current_pose.position.y;
     double obs_heading = atan2(dy, dx);
-    double current_yaw = tf::getYaw(current_pose.pose.pose.orientation);
+    double current_yaw = tf::getYaw(current_pose.orientation);
     double goal_yaw = tf::getYaw(current_goal_pose.orientation);
 
     // calculate r
@@ -101,14 +101,14 @@ namespace mpepc_local_planner
     return coords;
   }
 
-  geometry_msgs::Pose ControlLaw::convert_from_egopolar(nav_msgs::Odometry current_pose, EgoPolar current_goal_coords)
+  geometry_msgs::Pose ControlLaw::convert_from_egopolar(geometry_msgs::Pose current_pose, EgoPolar current_goal_coords)
   {
     geometry_msgs::Pose current_goal_pose;
 
-    double current_yaw = tf::getYaw(current_pose.pose.pose.orientation);
+    double current_yaw = tf::getYaw(current_pose.orientation);
 
-    current_goal_pose.position.x = current_pose.pose.pose.position.x + current_goal_coords.r * cos(current_yaw - current_goal_coords.delta);
-    current_goal_pose.position.y = current_pose.pose.pose.position.y + current_goal_coords.r * sin(current_yaw - current_goal_coords.delta);
+    current_goal_pose.position.x = current_pose.position.x + current_goal_coords.r * cos(current_yaw - current_goal_coords.delta);
+    current_goal_pose.position.y = current_pose.position.y + current_goal_coords.r * sin(current_yaw - current_goal_coords.delta);
     current_goal_pose.position.z = 0;
 
     current_goal_pose.orientation = tf::createQuaternionMsgFromYaw(current_yaw - current_goal_coords.delta + current_goal_coords.theta);
@@ -146,7 +146,7 @@ namespace mpepc_local_planner
     return sigma;
   }
 
-  geometry_msgs::Twist ControlLaw::get_velocity_command(nav_msgs::Odometry current_position, geometry_msgs::Pose goal, double k1, double k2, double vMax)
+  geometry_msgs::Twist ControlLaw::get_velocity_command(geometry_msgs::Pose current_position, geometry_msgs::Pose goal, double k1, double k2, double vMax)
   {
     EgoPolar goal_coords = convert_to_egopolar(current_position, goal);
 

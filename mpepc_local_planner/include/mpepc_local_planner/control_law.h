@@ -53,13 +53,13 @@ namespace mpepc_local_planner
     public:
       ControlLaw();
       explicit ControlLaw(ControlLawSettings c);
-      geometry_msgs::Twist get_velocity_command(nav_msgs::Odometry current_position, geometry_msgs::Pose goal, double k1 = 2, double k2 = 3, double vMax = 0.3);
+      geometry_msgs::Twist get_velocity_command(geometry_msgs::Pose current_position, geometry_msgs::Pose goal, double k1 = 2, double k2 = 3, double vMax = 0.3);
       geometry_msgs::Twist get_velocity_command(EgoPolar goal_coords, double k1, double k2, double vMax);
       geometry_msgs::Twist get_velocity_command(EgoPolar goal_coords, double vMax = 0.3);
-      double get_ego_distance(nav_msgs::Odometry current_position, geometry_msgs::Pose goal);
+      double get_ego_distance(geometry_msgs::Pose current_position, geometry_msgs::Pose goal);
       void update_k1_k2(double k1, double k2);
-      EgoPolar convert_to_egopolar(nav_msgs::Odometry current_pose, geometry_msgs::Pose current_goal_pose);
-      geometry_msgs::Pose convert_from_egopolar(nav_msgs::Odometry current_pose, EgoPolar current_goal_coords);
+      EgoPolar convert_to_egopolar(geometry_msgs::Pose current_pose, geometry_msgs::Pose current_goal_pose);
+      geometry_msgs::Pose convert_from_egopolar(geometry_msgs::Pose current_pose, EgoPolar current_goal_coords);
       double wrap_pos_neg_pi(double angle);
 
     protected:
