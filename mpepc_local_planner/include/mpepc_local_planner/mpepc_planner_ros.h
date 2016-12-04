@@ -40,6 +40,7 @@
 #include <nav_msgs/Odometry.h>
 #include <costmap_2d/costmap_2d_ros.h>
 #include <nav_core/base_local_planner.h>
+#include <base_local_planner/odometry_helper_ros.h>
 #include <base_local_planner/latched_stop_rotate_controller.h>
 #include <mpepc_local_planner/control_law.h>
 #include <mpepc_local_planner/EgoGoal.h>
@@ -62,6 +63,39 @@
 #include "flann/flann.hpp"
 
 namespace mpepc_local_planner {
+	#define RATE_FACTOR 0.2
+	#define DEFAULT_LOOP_RATE 10
+
+	#define RESULT_BEGIN 1
+	#define RESULT_SUCCESS 2
+	#define RESULT_CANCEL 3
+
+	// Trajectory Model Params
+	#define K_1 1.2           // 2
+	#define K_2 3             // 8
+	#define BETA 0.4          // 0.5
+	#define LAMBDA 2          // 3
+	#define R_THRESH 0.05
+	#define V_MAX 0.3         // 0.3
+	#define V_MIN 0.0
+
+	// Trajectory Optimization Params
+	#define TIME_HORIZON 5.0
+	#define DELTA_SIM_TIME 0.2
+	#define SAFETY_ZONE 0.225
+	#define WAYPOINT_THRESH 1.75
+
+	// Cost function params
+	static const double C1 = 0.05;
+	static const double C2 = 2.5;
+	static const double C3 = 0.05;        // 0.15
+	static const double C4 = 0.05;        // 0.2 //turn
+	static const double PHI_COL = 1.0;   // 0.4
+	static const double SIGMA = 0.2;    // 0.10
+
+	static const double PI= 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348;
+	static const double TWO_PI= 6.2831853071795864769252867665590057683943387987502116419498891846156328125724179972560696;
+	static const double minusPI= -3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348;
 	struct Point {
 	  float a;
 	  float b;
@@ -123,6 +157,8 @@ namespace mpepc_local_planner {
 	  double dist = sqrt(diffx*diffx + diffy*diffy);
 	  return dist;
 	}
+
+	double score_trajectory(const std::vector<double> &x, std::vector<double> &grad, void* f_data);
   /**
    * @class MpepcPlannerROS
    * @brief ROS Wrapper for the AckermannPlanner that adheres to the
@@ -170,6 +206,11 @@ namespace mpepc_local_planner {
        */
       virtual bool isGoalReached();
 
+      // Use NLOPT to find the next subgoal for the trajectory generator
+	  void find_intermediate_goal_params(EgoGoal *next_step);
+	  // This function is used by the optimizer to score different trajectories
+	  double sim_trajectory(double r, double delta, double theta, double vMax, double time_horizon);
+
     private:
       bool isInitialized() {
     	  return initialized_;
@@ -181,7 +222,7 @@ namespace mpepc_local_planner {
 	  base_local_planner::OdometryHelperRos odom_helper_;
 
 	  // for visualization, publishers of global and local plan
-	  ros::Publisher g_plan_pub_, l_plan_pub_;
+	  ros::Publisher l_plan_pub_;
 
 	  costmap_2d::Costmap2DROS* costmap_ros_;
 
@@ -210,11 +251,7 @@ namespace mpepc_local_planner {
 	  MinDistResult find_nearest_neighbor(Point queryPoint);
 	  double min_distance_to_obstacle(geometry_msgs::Pose local_current_pose, double *heading);
 
-	  // Use NLOPT to find the next subgoal for the trajectory generator
-	  void find_intermediate_goal_params(EgoGoal *next_step);
-	  double score_trajectory(const std::vector<double> &x, std::vector<double> &grad, void* f_data);
-	  // This function is used by the optimizer to score different trajectories
-	  double sim_trajectory(double r, double delta, double theta, double vMax, double time_horizon);
+	  geometry_msgs::PoseArray get_trajectory_viz(EgoGoal new_coords);
   };
 };
 #endif

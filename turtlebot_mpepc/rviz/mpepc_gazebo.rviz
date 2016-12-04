@@ -8,7 +8,7 @@ Panels:
         - /TF1/Tree1
         - /Local Planning1
         - /Local Planning1/Costmap1
-        - /Global Planning1
+        - /Local Planning1/PoseArray(local)1
         - /Global Planning1/Costmap1
         - /Global Planning1/Planner1
       Splitter Ratio: 0.5
@@ -388,11 +388,19 @@ Visualization Manager:
           Topic: /move_base/local_costmap/costmap
           Unreliable: false
           Value: true
+        - Arrow Length: 0.3
+          Class: rviz/PoseArray
+          Color: 255; 255; 0
+          Enabled: true
+          Name: PoseArray(local)
+          Topic: /move_base/MpepcPlannerROS/mpepc_local_plan
+          Unreliable: false
+          Value: true
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
           Color: 0; 12; 255
-          Enabled: true
+          Enabled: false
           Head Diameter: 0.3
           Head Length: 0.2
           Length: 0.3
@@ -409,7 +417,7 @@ Visualization Manager:
           Shaft Length: 0.1
           Topic: /move_base/DWAPlannerROS/local_plan
           Unreliable: false
-          Value: true
+          Value: false
         - Alpha: 0.5
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -590,7 +598,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 19.1137
+      Distance: 16.8201
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1

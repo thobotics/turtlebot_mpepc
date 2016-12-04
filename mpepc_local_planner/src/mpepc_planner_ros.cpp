@@ -45,44 +45,10 @@ PLUGINLIB_EXPORT_CLASS(mpepc_local_planner::MpepcPlannerROS, nav_core::BaseLocal
 
 namespace mpepc_local_planner {
 
-#define RATE_FACTOR 0.2
-#define DEFAULT_LOOP_RATE 10
-
-#define RESULT_BEGIN 1
-#define RESULT_SUCCESS 2
-#define RESULT_CANCEL 3
-
-// Trajectory Model Params
-#define K_1 1.2           // 2
-#define K_2 3             // 8
-#define BETA 0.4          // 0.5
-#define LAMBDA 2          // 3
-#define R_THRESH 0.05
-#define V_MAX 0.3         // 0.3
-#define V_MIN 0.0
-
-// Trajectory Optimization Params
-#define TIME_HORIZON 5.0
-#define DELTA_SIM_TIME 0.2
-#define SAFETY_ZONE 0.225
-#define WAYPOINT_THRESH 1.75
-
-// Cost function params
-static const double C1 = 0.05;
-static const double C2 = 2.5;
-static const double C3 = 0.05;        // 0.15
-static const double C4 = 0.05;        // 0.2 //turn
-static const double PHI_COL = 1.0;   // 0.4
-static const double SIGMA = 0.2;    // 0.10
-
-static const double PI= 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348;
-static const double TWO_PI= 6.2831853071795864769252867665590057683943387987502116419498891846156328125724179972560696;
-static const double minusPI= -3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348;
-
-char* MpepcPlannerROS::cost_translation_table_ = NULL;
+  char* MpepcPlannerROS::cost_translation_table_ = NULL;
 
   MpepcPlannerROS::MpepcPlannerROS() : initialized_(false),
-    goal_reached_(false) {
+		  odom_helper_("odom"), goal_reached_(false) {
 
   }
 
@@ -90,17 +56,16 @@ char* MpepcPlannerROS::cost_translation_table_ = NULL;
       std::string name,
       tf::TransformListener* tf,
       costmap_2d::Costmap2DROS* costmap_ros) {
-    if (! isInitialized()) {
+	  	  if (! isInitialized()) {
 
 			ros::NodeHandle private_nh("~/" + name);
 
-			l_plan_pub_ = private_nh.advertise<nav_msgs::Path>("local_plan", 1);
-			g_plan_pub_ = private_nh.advertise<nav_msgs::Path>("global_plan", 1);
+			l_plan_pub_ = private_nh.advertise<geometry_msgs::PoseArray>("mpepc_local_plan", 1);
 			tf_ = tf;
 			costmap_ros_ = costmap_ros;
 
 			// make sure to update the costmap we'll use for this cycle
-			// costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
+			costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
 
 			// TODO: Is using odom ??
 			// Default use for compute called in isGoalReached and compute cmd_vel
@@ -128,7 +93,19 @@ char* MpepcPlannerROS::cost_translation_table_ = NULL;
 				}
 			}
 
+			// FOR mpepc_plan
 			navfn_cost_ = private_nh.serviceClient<mpepc_global_planner::GetNavCost>("/move_base/NavfnROSExt/nav_cost");
+
+			// Initialize Motion Model
+			ControlLawSettings settings;
+			settings.m_K1 = K_1;
+			settings.m_K2 = K_2;
+			settings.m_BETA = BETA;
+			settings.m_LAMBDA = LAMBDA;
+			settings.m_R_THRESH = R_THRESH;
+			settings.m_V_MAX = V_MAX;
+			settings.m_V_MIN = V_MIN;
+			cl = new ControlLaw(settings);
 
 			initialized_ = true;
 		}
@@ -191,7 +168,10 @@ char* MpepcPlannerROS::cost_translation_table_ = NULL;
 		 */
 
 		// Get robot pose
-		geometry_msgs::Pose currentPose = getCurrentRobotPose();
+		/*geometry_msgs::Pose currentPose = getCurrentRobotPose();
+		// nav_msgs::Odometry odom;
+		// odom_helper_.getOdom(odom);
+		// geometry_msgs::Pose currentPose = odom.pose.pose;
 
 		double cost = getGlobalPlannerCost(currentPose);
 
@@ -200,7 +180,14 @@ char* MpepcPlannerROS::cost_translation_table_ = NULL;
 		double obstacle_heading = 0.0;
 		double minDist = min_distance_to_obstacle(currentPose, &obstacle_heading);
 
-		ROS_INFO("Min distance of %f, %f: %f", currentPose.position.x, currentPose.position.y, minDist);
+		ROS_INFO("Min distance of %f, %f: %f", currentPose.position.x, currentPose.position.y, minDist);*/
+
+		EgoGoal new_coords;
+		// Must update Obstacle Tree before using optimization technique
+		updateObstacleTree(costmap_ros_->getCostmap());
+		find_intermediate_goal_params(&new_coords);
+
+		l_plan_pub_.publish(get_trajectory_viz(new_coords));
 
 		/*
 		 * -------------------- END --------------------
@@ -217,6 +204,45 @@ char* MpepcPlannerROS::cost_translation_table_ = NULL;
 	tf::poseStampedTFToMsg(robot_pose, result);
 
 	return result.pose;
+  }
+
+  geometry_msgs::PoseArray MpepcPlannerROS::get_trajectory_viz(EgoGoal new_coords){
+	geometry_msgs::PoseArray viz_plan;
+	viz_plan.header.stamp = ros::Time::now();
+	viz_plan.header.frame_id = costmap_ros_->getGlobalFrameID();
+	viz_plan.poses.resize(1);
+
+	geometry_msgs::Pose sim_pose = getCurrentRobotPose();
+
+	EgoPolar sim_goal;
+	sim_goal.r = new_coords.r;
+	sim_goal.delta = new_coords.delta;
+	sim_goal.theta = new_coords.theta;
+
+	geometry_msgs::Pose current_goal = cl->convert_from_egopolar(sim_pose, sim_goal);
+
+	double sim_clock = 0.0;
+
+	geometry_msgs::Twist sim_cmd_vel;
+	double current_yaw = tf::getYaw(sim_pose.orientation);
+
+	while (sim_clock < TIME_HORIZON)
+	{
+	  sim_cmd_vel = cl->get_velocity_command(sim_goal, new_coords.k1, new_coords.k2, new_coords.vMax);
+
+	  // Update pose
+	  current_yaw = current_yaw + (sim_cmd_vel.angular.z * DELTA_SIM_TIME);
+	  sim_pose.position.x = sim_pose.position.x + (sim_cmd_vel.linear.x * DELTA_SIM_TIME * cos(current_yaw));
+	  sim_pose.position.y = sim_pose.position.y + (sim_cmd_vel.linear.x * DELTA_SIM_TIME * sin(current_yaw));
+	  sim_pose.orientation = tf::createQuaternionMsgFromYaw(current_yaw);
+	  viz_plan.poses.push_back(sim_pose);
+
+	  sim_goal = cl->convert_to_egopolar(sim_pose, current_goal);
+
+	  sim_clock = sim_clock + DELTA_SIM_TIME;
+	}
+
+	return viz_plan;
   }
 
   double MpepcPlannerROS::getGlobalPlannerCost(geometry_msgs::Pose local_pose){
@@ -245,9 +271,9 @@ char* MpepcPlannerROS::cost_translation_table_ = NULL;
 
 	if (navfn_cost_.call(service))
 	{
-		ROS_INFO("Response cost at %f %f : %f",
+		/*ROS_INFO("Response cost at %f %f : %f",
 				currentPoint.x, currentPoint.y,
-				(double)service.response.cost);
+				(double)service.response.cost);*/
 		return (double)service.response.cost;
 	}
 	else
@@ -440,13 +466,12 @@ char* MpepcPlannerROS::cost_translation_table_ = NULL;
 
   double MpepcPlannerROS::sim_trajectory(double r, double delta, double theta, double vMax, double time_horizon){
 	// Get robot pose from local cost map
-	// TODO: Change this to getCurrentRobotPose.
+	// DONE: Change this to getCurrentRobotPose.
 	// 1. Why need to change this? Ans: May be it help for faster reading current pose,
 	// but not sure because getCurrentRobotPose use transform instead of callback in Odom.
 	// 2. Why not change it now? Ans: Because it may need to change other file: control_law, ...
 
-	nav_msgs::Odometry sim_pose;
-	odom_helper_.getOdom(sim_pose);
+	geometry_msgs::Pose sim_pose = getCurrentRobotPose();
 
 	EgoPolar sim_goal;
 	sim_goal.r = r;
@@ -460,7 +485,7 @@ char* MpepcPlannerROS::cost_translation_table_ = NULL;
 	double sim_clock = 0.0;
 
 	geometry_msgs::Twist sim_cmd_vel;
-	double current_yaw = tf::getYaw(sim_pose.pose.pose.orientation);
+	double current_yaw = tf::getYaw(sim_pose.orientation);
 	geometry_msgs::Point collisionPoint;
 	bool collision_detected = false;
 
@@ -480,18 +505,18 @@ char* MpepcPlannerROS::cost_translation_table_ = NULL;
 	  sim_cmd_vel = cl->get_velocity_command(sim_goal, vMax);
 
 	  // get navigation function at orig pose
-	  nav_fn_t0 = getGlobalPlannerCost(sim_pose.pose.pose);
+	  nav_fn_t0 = getGlobalPlannerCost(sim_pose);
 
 	  // Update pose
 	  current_yaw = current_yaw + (sim_cmd_vel.angular.z * DELTA_SIM_TIME);
-	  sim_pose.pose.pose.position.x = sim_pose.pose.pose.position.x + (sim_cmd_vel.linear.x * DELTA_SIM_TIME * cos(current_yaw));
-	  sim_pose.pose.pose.position.y = sim_pose.pose.pose.position.y + (sim_cmd_vel.linear.x * DELTA_SIM_TIME * sin(current_yaw));
-	  sim_pose.pose.pose.orientation = tf::createQuaternionMsgFromYaw(current_yaw);
+	  sim_pose.position.x = sim_pose.position.x + (sim_cmd_vel.linear.x * DELTA_SIM_TIME * cos(current_yaw));
+	  sim_pose.position.y = sim_pose.position.y + (sim_cmd_vel.linear.x * DELTA_SIM_TIME * sin(current_yaw));
+	  sim_pose.orientation = tf::createQuaternionMsgFromYaw(current_yaw);
 
 	  // Get navigation function at new pose
-	  nav_fn_t1 = getGlobalPlannerCost(sim_pose.pose.pose);
+	  nav_fn_t1 = getGlobalPlannerCost(sim_pose);
 
-	  double minDist = min_distance_to_obstacle(sim_pose.pose.pose, &obstacle_heading);
+	  double minDist = min_distance_to_obstacle(sim_pose, &obstacle_heading);
 
 	  if (minDist <= SAFETY_ZONE)
 	  {
@@ -527,9 +552,9 @@ char* MpepcPlannerROS::cost_translation_table_ = NULL;
 	}
 
 	// Update with angle heuristic - weighted difference between final pose and gradient of navigation function
-	double gradient_angle = getGlobalPlannerCost(sim_pose.pose.pose);
+	double gradient_angle = getGlobalPlannerCost(sim_pose);
 
-	expected_progress = expected_progress + C1 * abs(tf::getYaw(sim_pose.pose.pose.orientation) - gradient_angle);
+	expected_progress = expected_progress + C1 * abs(tf::getYaw(sim_pose.orientation) - gradient_angle);
 
 	++trajectory_count;
 
@@ -537,4 +562,80 @@ char* MpepcPlannerROS::cost_translation_table_ = NULL;
 	return (expected_collision + expected_progress + expected_action);
   }
 
+  /**
+   * Call back function for nlopt objective function
+   * Note: this function is not belong to class
+   */
+  double score_trajectory(const std::vector<double> &x, std::vector<double> &grad, void* f_data){
+	double time_horizon = TIME_HORIZON;
+	MpepcPlannerROS * planner = static_cast<MpepcPlannerROS *>(f_data);
+	return planner->sim_trajectory(x[0], x[1], x[2], x[3], time_horizon);
+  }
+
+  void MpepcPlannerROS::find_intermediate_goal_params(EgoGoal *next_step)
+  {
+    trajectory_count = 0;
+
+    int max_iter = 250;  // 30
+    nlopt::opt opt = nlopt::opt(nlopt::GN_DIRECT_NOSCAL, 4);
+    opt.set_min_objective(score_trajectory, this);
+    opt.set_xtol_rel(0.0001);
+    std::vector<double> lb;
+    std::vector<double> rb;
+    lb.push_back(0);
+    lb.push_back(-1.8);
+    lb.push_back(-1.8);
+    lb.push_back(V_MIN);
+    rb.push_back(5.0);
+    rb.push_back(1.8);
+    rb.push_back(1.8);
+    rb.push_back(V_MAX);
+    opt.set_lower_bounds(lb);
+    opt.set_upper_bounds(rb);
+    opt.set_maxeval(max_iter);
+
+    std::vector<double> k(4);
+    k[0] = 0.0;
+    k[1] = 0.0;
+    k[2] = 0.0;
+    k[3] = 0.0;
+    double minf;
+
+    opt.optimize(k, minf);
+
+    ROS_DEBUG("Global Optimization - Trajectories evaluated: %d", trajectory_count);
+    trajectory_count = 0;
+
+    max_iter = 75;  // 200
+    nlopt::opt opt2 = nlopt::opt(nlopt::LN_BOBYQA, 4);
+    opt2.set_min_objective(score_trajectory, this);
+    opt2.set_xtol_rel(0.0001);
+    std::vector<double> lb2;
+    std::vector<double> rb2;
+    lb2.push_back(0);
+    lb2.push_back(-1.8);
+    lb2.push_back(-3.1);
+    lb2.push_back(V_MIN);
+    rb2.push_back(5.0);
+    rb2.push_back(1.8);
+    rb2.push_back(3.1);
+    rb2.push_back(V_MAX);
+    opt2.set_lower_bounds(lb2);
+    opt2.set_upper_bounds(rb2);
+    opt2.set_maxeval(max_iter);
+
+    opt2.optimize(k, minf);
+
+    ROS_DEBUG("Local Optimization - Trajectories evaluated: %d", trajectory_count);
+    trajectory_count = 0;
+
+    next_step->r = k[0];
+    next_step->delta = k[1];
+    next_step->theta = k[2];
+    next_step->vMax = k[3];
+    next_step->k1 = K_1;
+    next_step->k2 = K_2;
+
+    return;
+  }
 };
