@@ -9,6 +9,7 @@
 #define TURTLEBOT_MPEPC_INCLUDE_TURTLEBOT_MPEPC_NAVFN_ROS_EXT_H_
 
 #include <navfn/navfn_ros.h>
+
 #include <mpepc_global_planner/GetNavCost.h>
 
 namespace navfn {
@@ -16,7 +17,8 @@ namespace navfn {
    * @class NavfnROS
    * @brief Provides a ROS wrapper for the navfn planner which runs a fast, interpolated navigation function on a costmap.
    */
-  class NavfnROSExt : public NavfnROS {
+  class NavfnROSExt : public NavfnROS
+ {
   public:
 	  NavfnROSExt();
 	  NavfnROSExt(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
@@ -38,6 +40,7 @@ namespace navfn {
 	  bool makePlan(const geometry_msgs::PoseStamped& start,
 			  const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);
   private:
+	  ros::Publisher cost_array_pub_;
 	  ros::ServiceServer cost_service_;
 
 	  double map_resolution;

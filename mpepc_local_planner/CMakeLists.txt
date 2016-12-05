@@ -7,10 +7,12 @@ find_package(catkin REQUIRED COMPONENTS
   costmap_2d
   dynamic_reconfigure
   nav_core
+  navfn
   nav_msgs
   roscpp
   roslib
   tf
+  mpepc_global_planner
   )
   
 ## System dependencies are found with CMake's conventions

@@ -131,7 +131,7 @@ include_directories(
 )
 
 ## Declare a C++ library
-add_library(navfnext
+add_library(mpepc_global_planner
    src/navfn_ros_ext.cpp
 )
 
@@ -146,10 +146,10 @@ add_executable(nav_test_client src/navfn_service_test.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(nav_test_client ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-#add_dependencies(navfnext ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#add_dependencies(mpepc_global_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(navfnext
+target_link_libraries(mpepc_global_planner
    ${catkin_LIBRARIES}
 )
 
@@ -173,11 +173,11 @@ target_link_libraries(nav_test_client
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS turtlebot_mpepc turtlebot_mpepc_node
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(TARGETS mpepc_global_planner
+   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+ )
 
 ## Mark cpp header files for installation
 # install(DIRECTORY include/${PROJECT_NAME}/

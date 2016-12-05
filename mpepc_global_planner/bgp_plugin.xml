@@ -1,4 +1,4 @@
-<library path="lib/libnavfnext">
+<library path="lib/libmpepc_global_planner">
   <class name="navfn/NavfnROSExt" type="navfn::NavfnROSExt" base_class_type="nav_core::BaseGlobalPlanner">
     <description>
       A implementation of a grid based planner using Dijkstra

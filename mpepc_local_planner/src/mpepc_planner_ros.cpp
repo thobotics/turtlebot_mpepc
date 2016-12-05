@@ -36,9 +36,14 @@
 *********************************************************************/
 
 #include <mpepc_local_planner/mpepc_planner_ros.h>
+//#include <mpepc_global_planner/navfn_ros_ext.h>
 #include <pluginlib/class_list_macros.h>
 #include <base_local_planner/goal_functions.h>
 #include <mpepc_global_planner/GetNavCost.h>
+#include <pluginlib/class_loader.h>
+#include <nav_core/base_global_planner.h>
+
+
 
 //register this planner as a BaseLocalPlanner plugin
 PLUGINLIB_EXPORT_CLASS(mpepc_local_planner::MpepcPlannerROS, nav_core::BaseLocalPlanner)
@@ -48,7 +53,7 @@ namespace mpepc_local_planner {
   char* MpepcPlannerROS::cost_translation_table_ = NULL;
 
   MpepcPlannerROS::MpepcPlannerROS() : initialized_(false),
-		  odom_helper_("odom"), goal_reached_(false) {
+		  goal_reached_(false) {
 
   }
 
@@ -60,6 +65,7 @@ namespace mpepc_local_planner {
 
 			ros::NodeHandle private_nh("~/" + name);
 
+			//cost_array_sub_ = private_nh.subscribe<std_msgs::Float32Ptr>("navigation_cost_array", 10, nav_cost_cb);
 			l_plan_pub_ = private_nh.advertise<geometry_msgs::PoseArray>("mpepc_local_plan", 1);
 			tf_ = tf;
 			costmap_ros_ = costmap_ros;
@@ -67,11 +73,22 @@ namespace mpepc_local_planner {
 			// make sure to update the costmap we'll use for this cycle
 			costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
 
+			pluginlib::ClassLoader<nav_core::BaseGlobalPlanner> bgp_loader_("nav_core", "nav_core::BaseGlobalPlanner");
+			//ROS_INFO("Is class loaded %d", bgp_loader_.isClassLoaded("navfn/NavfnROSExt"));
+			boost::shared_ptr<nav_core::BaseGlobalPlanner> planner_;
+			//boost::shared_ptr<navfn::NavfnROSExt> planner_;
+			try {
+			  planner_ = bgp_loader_.createInstance("navfn/NavfnROSExt");
+			} catch (const pluginlib::PluginlibException& ex) {
+			  ROS_FATAL("** Failed to create the NavfnROSExt planner, are you sure it is properly registered and that the containing library is built? Exception: %s", ex.what());
+			  exit(1);
+			}
+
 			// TODO: Is using odom ??
 			// Default use for compute called in isGoalReached and compute cmd_vel
-			std::string odom_topic;
+			/*std::string odom_topic;
 			private_nh.param<std::string>("odom_topic", odom_topic, "odom");
-			odom_helper_.setOdomTopic( odom_topic );
+			odom_helper_.setOdomTopic( odom_topic );*/
 
 			// For compute obstacle tree
 			// NOTE: Copy from costmap_2d_publisher.
@@ -185,7 +202,10 @@ namespace mpepc_local_planner {
 		EgoGoal new_coords;
 		// Must update Obstacle Tree before using optimization technique
 		updateObstacleTree(costmap_ros_->getCostmap());
+		// Update pose to use for find optimal goal.
+		sim_current_pose_ = getCurrentRobotPose();
 		find_intermediate_goal_params(&new_coords);
+
 
 		l_plan_pub_.publish(get_trajectory_viz(new_coords));
 
@@ -212,7 +232,7 @@ namespace mpepc_local_planner {
 	viz_plan.header.frame_id = costmap_ros_->getGlobalFrameID();
 	viz_plan.poses.resize(1);
 
-	geometry_msgs::Pose sim_pose = getCurrentRobotPose();
+	geometry_msgs::Pose sim_pose = sim_current_pose_;
 
 	EgoPolar sim_goal;
 	sim_goal.r = new_coords.r;
@@ -245,6 +265,10 @@ namespace mpepc_local_planner {
 	return viz_plan;
   }
 
+  /*void MpepcPlannerROS::nav_cost_cb(const std_msgs::Float32Ptr potentialArray){
+	  potential_arr_ = potentialArray;
+  }*/
+
   double MpepcPlannerROS::getGlobalPlannerCost(geometry_msgs::Pose local_pose){
 	// Transform to global_pose
 	geometry_msgs::PoseStamped local_pose_stamp;
@@ -254,16 +278,19 @@ namespace mpepc_local_planner {
 	local_pose_stamp.header.stamp = ros::Time(0);
 	local_pose_stamp.pose = local_pose;
 
-	geometry_msgs::PoseStamped global_pose_stamp;
+	/*geometry_msgs::PoseStamped global_pose_stamp;
 	try{
 		tf_->waitForTransform("/map", costmap_ros_->getGlobalFrameID(), ros::Time(0), ros::Duration(10.0));
 		tf_->transformPose("/map", local_pose_stamp, global_pose_stamp);
 	}catch (tf::TransformException & ex){
 		ROS_ERROR("Transform exception : %s", ex.what());
-	}
+	}*/
 
 	geometry_msgs::Point currentPoint;
-	currentPoint = global_pose_stamp.pose.position;
+	//currentPoint = global_pose_stamp.pose.position;
+	currentPoint = local_pose.position;
+	currentPoint.x += 2;
+	currentPoint.y += 2;
 
 	// Service request
 	mpepc_global_planner::GetNavCost service;
@@ -471,7 +498,7 @@ namespace mpepc_local_planner {
 	// but not sure because getCurrentRobotPose use transform instead of callback in Odom.
 	// 2. Why not change it now? Ans: Because it may need to change other file: control_law, ...
 
-	geometry_msgs::Pose sim_pose = getCurrentRobotPose();
+	geometry_msgs::Pose sim_pose = sim_current_pose_;
 
 	EgoPolar sim_goal;
 	sim_goal.r = r;
@@ -499,10 +526,16 @@ namespace mpepc_local_planner {
 	double survivability = 1.0;
 	double obstacle_heading = 0.0;
 
+	//clock_t begin_time = clock();
+
 	while (sim_clock < time_horizon)
 	{
 	  // Get Velocity Commands
+	  clock_t begin_time = clock();
 	  sim_cmd_vel = cl->get_velocity_command(sim_goal, vMax);
+	  ROS_INFO("Velocity command take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
+
+	  begin_time = clock();
 
 	  // get navigation function at orig pose
 	  nav_fn_t0 = getGlobalPlannerCost(sim_pose);
@@ -516,7 +549,11 @@ namespace mpepc_local_planner {
 	  // Get navigation function at new pose
 	  nav_fn_t1 = getGlobalPlannerCost(sim_pose);
 
+	  ROS_INFO("Interpolate Navfn cost take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
+
+	  begin_time = clock();
 	  double minDist = min_distance_to_obstacle(sim_pose, &obstacle_heading);
+	  ROS_INFO("Min distance take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
 
 	  if (minDist <= SAFETY_ZONE)
 	  {
@@ -546,10 +583,14 @@ namespace mpepc_local_planner {
 	  expected_action = expected_action + (C3 * pow(sim_cmd_vel.linear.x, 2) + C4 * pow(sim_cmd_vel.angular.z, 2))*DELTA_SIM_TIME;
 
 	  // Calculate new EgoPolar coords for goal
+	  begin_time = clock();
 	  sim_goal = cl->convert_to_egopolar(sim_pose, current_goal);
+	  ROS_INFO("sim_goal take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
 
 	  sim_clock = sim_clock + DELTA_SIM_TIME;
 	}
+
+	//ROS_INFO("Horizon take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
 
 	// Update with angle heuristic - weighted difference between final pose and gradient of navigation function
 	double gradient_angle = getGlobalPlannerCost(sim_pose);
@@ -601,9 +642,11 @@ namespace mpepc_local_planner {
     k[3] = 0.0;
     double minf;
 
+    ros::Time last = ros::Time::now();
     opt.optimize(k, minf);
+    ROS_INFO("Global optimization take %f", (ros::Time::now()-last).toSec());
 
-    ROS_DEBUG("Global Optimization - Trajectories evaluated: %d", trajectory_count);
+    ROS_INFO("Global Optimization - Trajectories evaluated: %d", trajectory_count);
     trajectory_count = 0;
 
     max_iter = 75;  // 200
@@ -624,9 +667,11 @@ namespace mpepc_local_planner {
     opt2.set_upper_bounds(rb2);
     opt2.set_maxeval(max_iter);
 
+    last = ros::Time::now();
     opt2.optimize(k, minf);
+    ROS_INFO("Local optimization take %f", (ros::Time::now()-last).toSec());
 
-    ROS_DEBUG("Local Optimization - Trajectories evaluated: %d", trajectory_count);
+    ROS_INFO("Local Optimization - Trajectories evaluated: %d", trajectory_count);
     trajectory_count = 0;
 
     next_step->r = k[0];

@@ -62,6 +62,8 @@
 #include <nlopt.hpp>
 #include "flann/flann.hpp"
 
+#include <ctime>
+
 namespace mpepc_local_planner {
 	#define RATE_FACTOR 0.2
 	#define DEFAULT_LOOP_RATE 10
@@ -219,10 +221,13 @@ namespace mpepc_local_planner {
 	  bool goal_reached_;
 	  tf::TransformListener* tf_;
 	  std::vector<geometry_msgs::PoseStamped> global_plan_;
-	  base_local_planner::OdometryHelperRos odom_helper_;
+	  //base_local_planner::OdometryHelperRos odom_helper_;
 
 	  // for visualization, publishers of global and local plan
 	  ros::Publisher l_plan_pub_;
+	  ros::Subscriber cost_array_sub_;
+
+	  float *potential_arr_;
 
 	  costmap_2d::Costmap2DROS* costmap_ros_;
 
@@ -242,15 +247,16 @@ namespace mpepc_local_planner {
 
 	  static char* cost_translation_table_;
 
+	  geometry_msgs::Pose sim_current_pose_;
 	  geometry_msgs::Pose getCurrentRobotPose();
 
 	  // Function for mpepc optimization
+	  //void nav_cost_cb(const std_msgs::Float32Ptr potentialArray);
 	  double getGlobalPlannerCost(geometry_msgs::Pose local_pose);
 	  void updateObstacleTree(costmap_2d::Costmap2D *costmap);
 	  vector<MinDistResult> find_points_within_threshold(Point newPoint, double threshold);
 	  MinDistResult find_nearest_neighbor(Point queryPoint);
 	  double min_distance_to_obstacle(geometry_msgs::Pose local_current_pose, double *heading);
-
 	  geometry_msgs::PoseArray get_trajectory_viz(EgoGoal new_coords);
   };
 };

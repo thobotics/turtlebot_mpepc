@@ -13,9 +13,11 @@
 
   <run_depend>angles</run_depend>
   <run_depend>base_local_planner</run_depend>
+  <run_depend>mpepc_global_planner</run_depend>
   <run_depend>costmap_2d</run_depend>
   <run_depend>dynamic_reconfigure</run_depend>
   <run_depend>nav_core</run_depend>
+  <run_depend>navfn</run_depend>
   <run_depend>nav_msgs</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>roslib</run_depend>
@@ -23,9 +25,11 @@
 
   <build_depend>angles</build_depend>
   <build_depend>base_local_planner</build_depend>
+  <build_depend>mpepc_global_planner</build_depend>
   <build_depend>costmap_2d</build_depend>
   <build_depend>dynamic_reconfigure</build_depend>
   <build_depend>nav_core</build_depend>
+  <build_depend>navfn</build_depend>
   <build_depend>nav_msgs</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>roslib</build_depend>

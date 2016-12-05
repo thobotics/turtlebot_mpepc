@@ -5,7 +5,6 @@
  *      Author: thobotics
  */
 
-#include <mpepc_global_planner/navfn_ros_ext.h>
 #include <pluginlib/class_list_macros.h>
 #include <tf/transform_listener.h>
 #include <costmap_2d/cost_values.h>
@@ -13,7 +12,7 @@
 #include <math.h>
 
 //register this planner as a BaseGlobalPlanner plugin
-PLUGINLIB_DECLARE_CLASS(navfn, NavfnROSExt, navfn::NavfnROSExt, nav_core::BaseGlobalPlanner)
+PLUGINLIB_EXPORT_CLASS(navfn::NavfnROSExt, nav_core::BaseLocalPlanner)
 
 namespace navfn {
 
@@ -32,6 +31,7 @@ namespace navfn {
 		interp_rotation_factor = (sqrt(2) * map_resolution - map_resolution)/2;
 
 		ros::NodeHandle private_nh("~/" + name);
+		//cost_array_pub_ = private_nh.advertise<std_msgs::Float32Ptr>("navigation_cost_array", 1);
 		cost_service_ =  private_nh.advertiseService("nav_cost", &NavfnROSExt::getNavigationCost, this);
 
 		ROS_INFO("Initialized NavfnROSExt");
@@ -39,7 +39,10 @@ namespace navfn {
 
 	bool NavfnROSExt::makePlan(const geometry_msgs::PoseStamped& start,
 				  const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan){
-		return NavfnROS::makePlan(goal, start, plan);
+		bool result = NavfnROS::makePlan(goal, start, plan);
+		// Must makePlan before publish potential array
+		//cost_array_pub_.publish(planner_->potarr);
+		return result;
 	}
 
 	bool NavfnROSExt::getNavigationCost(mpepc_global_planner::GetNavCost::Request& req, mpepc_global_planner::GetNavCost::Response& resp){
