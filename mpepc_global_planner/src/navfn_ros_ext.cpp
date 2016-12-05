@@ -32,14 +32,27 @@ namespace navfn {
 		interp_rotation_factor = (sqrt(2) * map_resolution - map_resolution)/2;
 
 		ros::NodeHandle private_nh("~/" + name);
-		cost_service_ =  private_nh.advertiseService("nav_cost", &NavfnROSExt::getNavigationCost, this);
+		nav_cost_pub_ = private_nh.advertise<mpepc_global_planner::NavigationCost>("nav_cost_arr", 1);
+		cost_service_ = private_nh.advertiseService("nav_cost", &NavfnROSExt::getNavigationCost, this);
 
 		ROS_INFO("Initialized NavfnROSExt");
 	}
 
 	bool NavfnROSExt::makePlan(const geometry_msgs::PoseStamped& start,
 				  const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan){
-		return NavfnROS::makePlan(goal, start, plan);
+		bool result = NavfnROS::makePlan(goal, start, plan);
+
+		mpepc_global_planner::NavigationCost nav_cost;
+		float * tmp = planner_->potarr;
+		std::vector<float> potarr(tmp, tmp + (unsigned int)planner_->ns);
+		nav_cost.potential_cost = potarr;
+		nav_cost.info.width = costmap_ros_->getCostmap()->getSizeInCellsX();
+		nav_cost.info.height = costmap_ros_->getCostmap()->getSizeInCellsY();
+		nav_cost.info.resolution = map_resolution;
+		nav_cost.info.origin.position.x = costmap_ros_->getCostmap()->getOriginX();
+		nav_cost.info.origin.position.y = costmap_ros_->getCostmap()->getOriginY();
+		nav_cost_pub_.publish(nav_cost);
+		return result;
 	}
 
 	bool NavfnROSExt::getNavigationCost(mpepc_global_planner::GetNavCost::Request& req, mpepc_global_planner::GetNavCost::Response& resp){

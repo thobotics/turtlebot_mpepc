@@ -10,6 +10,7 @@
 
 #include <navfn/navfn_ros.h>
 #include <mpepc_global_planner/GetNavCost.h>
+#include <mpepc_global_planner/NavigationCost.h>
 
 namespace navfn {
 /**
@@ -38,6 +39,7 @@ namespace navfn {
 	  bool makePlan(const geometry_msgs::PoseStamped& start,
 			  const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);
   private:
+	  ros::Publisher nav_cost_pub_;
 	  ros::ServiceServer cost_service_;
 
 	  double map_resolution;

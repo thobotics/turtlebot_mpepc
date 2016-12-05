@@ -40,6 +40,8 @@
 #include <base_local_planner/goal_functions.h>
 #include <mpepc_global_planner/GetNavCost.h>
 
+#include <ctime>
+
 //register this planner as a BaseLocalPlanner plugin
 PLUGINLIB_EXPORT_CLASS(mpepc_local_planner::MpepcPlannerROS, nav_core::BaseLocalPlanner)
 
@@ -94,6 +96,7 @@ namespace mpepc_local_planner {
 			}
 
 			// FOR mpepc_plan
+			navfn_cost_sub_ = private_nh.subscribe<mpepc_global_planner::NavigationCost> ("/move_base/NavfnROSExt/nav_cost_arr", 1, &MpepcPlannerROS::nav_cost_cb, this);
 			navfn_cost_ = private_nh.serviceClient<mpepc_global_planner::GetNavCost>("/move_base/NavfnROSExt/nav_cost");
 
 			// Initialize Motion Model
@@ -112,6 +115,16 @@ namespace mpepc_local_planner {
 		else{
 		  ROS_WARN_NAMED("MPEPCPlanner", "This planner has already been initialized, doing nothing.");
 		}
+  }
+
+  void MpepcPlannerROS::nav_cost_cb(const mpepc_global_planner::NavigationCost::ConstPtr& nav_cost)
+  {
+	  global_potarr_ = nav_cost->potential_cost;
+	  global_width_ = nav_cost->info.width;
+	  global_height_ = nav_cost->info.height;
+	  origin_x_ = nav_cost->info.origin.position.x;
+	  origin_y_ = nav_cost->info.origin.position.y;
+	  resolution_ = nav_cost->info.resolution;
   }
 
   bool MpepcPlannerROS::setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan) {
@@ -245,8 +258,9 @@ namespace mpepc_local_planner {
 	return viz_plan;
   }
 
-  double MpepcPlannerROS::getGlobalPlannerCost(geometry_msgs::Pose local_pose){
-	// Transform to global_pose
+  geometry_msgs::Pose MpepcPlannerROS::transformOdomToMap(geometry_msgs::Pose local_pose){
+    // Transform to global_pose
+	//clock_t begin_time = clock();
 	geometry_msgs::PoseStamped local_pose_stamp;
 	local_pose_stamp.header.frame_id = costmap_ros_->getGlobalFrameID();
 	// This is important!!!
@@ -262,18 +276,26 @@ namespace mpepc_local_planner {
 		ROS_ERROR("Transform exception : %s", ex.what());
 	}
 
-	geometry_msgs::Point currentPoint;
-	currentPoint = global_pose_stamp.pose.position;
+	//ROS_INFO("Transform plan take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
+	return global_pose_stamp.pose;
+  }
 
+  double MpepcPlannerROS::getGlobalPlannerCost(geometry_msgs::Pose local_pose){
+	geometry_msgs::Pose global_pose = transformOdomToMap(local_pose);
+	geometry_msgs::Point currentPoint;
+	currentPoint = global_pose.position;
 	// Service request
 	mpepc_global_planner::GetNavCost service;
 	service.request.world_point = currentPoint;
 
+	//begin_time = clock();
 	if (navfn_cost_.call(service))
 	{
 		/*ROS_INFO("Response cost at %f %f : %f",
 				currentPoint.x, currentPoint.y,
 				(double)service.response.cost);*/
+		//ROS_INFO("Get nav_cost from service take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
+
 		return (double)service.response.cost;
 	}
 	else
@@ -282,6 +304,32 @@ namespace mpepc_local_planner {
 	}
 
 	return -1;
+  }
+
+  double MpepcPlannerROS::getGlobalPointPotential(geometry_msgs::Pose local_pose){
+	//clock_t begin_time = clock();
+	geometry_msgs::Pose global_pose = transformOdomToMap(local_pose);
+	geometry_msgs::Point currentPoint;
+	currentPoint = global_pose.position;
+
+	// TODO: Interpolate here
+	bool flag = false;
+	unsigned int mx, my;
+	// Copy from worldToMap from Costmap2D
+	if (currentPoint.x < origin_x_ || currentPoint.y < origin_y_)
+	  flag = false;
+	mx = (int)((currentPoint.x - origin_x_) / resolution_);
+	my = (int)((currentPoint.y - origin_y_) / resolution_);
+	if (mx < global_width_ && my < global_height_)
+	  flag = true;
+
+	//ROS_INFO("Get point potential take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
+
+	if(!flag)
+	  return DBL_MAX;
+
+	unsigned int index = my * global_width_ + mx;
+	return global_potarr_[index];
   }
 
   void MpepcPlannerROS::updateObstacleTree(costmap_2d::Costmap2D *costmap){
@@ -505,7 +553,7 @@ namespace mpepc_local_planner {
 	  sim_cmd_vel = cl->get_velocity_command(sim_goal, vMax);
 
 	  // get navigation function at orig pose
-	  nav_fn_t0 = getGlobalPlannerCost(sim_pose);
+	  nav_fn_t0 = getGlobalPointPotential(sim_pose);
 
 	  // Update pose
 	  current_yaw = current_yaw + (sim_cmd_vel.angular.z * DELTA_SIM_TIME);
@@ -514,7 +562,7 @@ namespace mpepc_local_planner {
 	  sim_pose.orientation = tf::createQuaternionMsgFromYaw(current_yaw);
 
 	  // Get navigation function at new pose
-	  nav_fn_t1 = getGlobalPlannerCost(sim_pose);
+	  nav_fn_t1 = getGlobalPointPotential(sim_pose);
 
 	  double minDist = min_distance_to_obstacle(sim_pose, &obstacle_heading);
 
@@ -552,7 +600,7 @@ namespace mpepc_local_planner {
 	}
 
 	// Update with angle heuristic - weighted difference between final pose and gradient of navigation function
-	double gradient_angle = getGlobalPlannerCost(sim_pose);
+	double gradient_angle = getGlobalPointPotential(sim_pose);
 
 	expected_progress = expected_progress + C1 * abs(tf::getYaw(sim_pose.orientation) - gradient_angle);
 

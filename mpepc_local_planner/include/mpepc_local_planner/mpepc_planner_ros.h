@@ -42,6 +42,7 @@
 #include <nav_core/base_local_planner.h>
 #include <base_local_planner/odometry_helper_ros.h>
 #include <base_local_planner/latched_stop_rotate_controller.h>
+#include <mpepc_global_planner/NavigationCost.h>
 #include <mpepc_local_planner/control_law.h>
 #include <mpepc_local_planner/EgoGoal.h>
 #include <math.h>
@@ -226,7 +227,12 @@ namespace mpepc_local_planner {
 
 	  costmap_2d::Costmap2DROS* costmap_ros_;
 
+	  ros::Subscriber navfn_cost_sub_;
 	  ros::ServiceClient navfn_cost_;
+
+	  std::vector<float> global_potarr_;
+	  unsigned int global_width_, global_height_;
+	  double origin_x_, origin_y_, resolution_;
 
 	  // Properties for mpepc optimization
 	  boost::mutex pose_mutex_, cost_map_mutex_;
@@ -245,7 +251,12 @@ namespace mpepc_local_planner {
 	  geometry_msgs::Pose getCurrentRobotPose();
 
 	  // Function for mpepc optimization
+	  void nav_cost_cb(const mpepc_global_planner::NavigationCost::ConstPtr& nav_cost);
+
+	  geometry_msgs::Pose transformOdomToMap(geometry_msgs::Pose local_pose);
 	  double getGlobalPlannerCost(geometry_msgs::Pose local_pose);
+	  double getGlobalPointPotential(geometry_msgs::Pose local_pose);
+
 	  void updateObstacleTree(costmap_2d::Costmap2D *costmap);
 	  vector<MinDistResult> find_points_within_threshold(Point newPoint, double threshold);
 	  MinDistResult find_nearest_neighbor(Point queryPoint);
