@@ -561,7 +561,7 @@ Visualization Manager:
       Class: rviz/Odometry
       Color: 48; 48; 48
       Enabled: true
-      Keep: 10
+      Keep: 1
       Length: 0.4
       Name: Odometry
       Position Tolerance: 0.1
