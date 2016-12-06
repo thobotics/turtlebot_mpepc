@@ -198,9 +198,17 @@ namespace mpepc_local_planner {
 		EgoGoal new_coords;
 		// Must update Obstacle Tree before using optimization technique
 		updateObstacleTree(costmap_ros_->getCostmap());
+		sim_current_pose_ = getCurrentRobotPose();
 		find_intermediate_goal_params(&new_coords);
 
 		l_plan_pub_.publish(get_trajectory_viz(new_coords));
+
+		EgoPolar inter_goal_coords;
+		inter_goal_coords.r = new_coords.r;
+		inter_goal_coords.delta = new_coords.delta;
+		inter_goal_coords.theta = new_coords.theta;
+		geometry_msgs::Pose inter_goal_pose = cl->convert_from_egopolar(sim_current_pose_, inter_goal_coords);
+		cmd_vel = cl->get_velocity_command(sim_current_pose_, inter_goal_pose, new_coords.k1, new_coords.k2, new_coords.vMax);
 
 		/*
 		 * -------------------- END --------------------
@@ -519,7 +527,7 @@ namespace mpepc_local_planner {
 	// but not sure because getCurrentRobotPose use transform instead of callback in Odom.
 	// 2. Why not change it now? Ans: Because it may need to change other file: control_law, ...
 
-	geometry_msgs::Pose sim_pose = getCurrentRobotPose();
+	geometry_msgs::Pose sim_pose = sim_current_pose_;
 
 	EgoPolar sim_goal;
 	sim_goal.r = r;

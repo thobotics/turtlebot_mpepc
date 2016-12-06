@@ -248,6 +248,8 @@ namespace mpepc_local_planner {
 
 	  static char* cost_translation_table_;
 
+	  geometry_msgs::Pose sim_current_pose_;
+
 	  geometry_msgs::Pose getCurrentRobotPose();
 
 	  // Function for mpepc optimization
