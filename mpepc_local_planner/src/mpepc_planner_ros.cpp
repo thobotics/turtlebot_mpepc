@@ -50,8 +50,8 @@ namespace mpepc_local_planner {
   char* MpepcPlannerROS::cost_translation_table_ = NULL;
 
   MpepcPlannerROS::MpepcPlannerROS() : initialized_(false),
-		  odom_helper_("odom"), goal_reached_(false) {
-
+		  odom_helper_("odom"), goal_reached_(false), isPlanThreadStart_(false) {
+	  inter_goal_coords_.r = -1;
   }
 
   void MpepcPlannerROS::initialize(
@@ -117,6 +117,34 @@ namespace mpepc_local_planner {
 		}
   }
 
+  void MpepcPlannerROS::planThread(){
+	// TODO: ROS rate here
+	ROS_INFO("Starting planner thread...");
+
+	ros::NodeHandle n;
+	ros::Rate rate_obj(5.0); // Maximum 5Hz each loop
+	while(n.ok()){
+		EgoGoal new_coords;
+		// Must update Obstacle Tree before using optimization technique
+		updateObstacleTree(costmap_ros_->getCostmap());
+		sim_current_pose_ = getCurrentRobotPose();
+		find_intermediate_goal_params(&new_coords);
+
+		{
+			boost::mutex::scoped_lock lock(inter_goal_mutex_);
+			inter_goal_coords_.r = new_coords.r;
+			inter_goal_coords_.delta = new_coords.delta;
+			inter_goal_coords_.theta = new_coords.theta;
+			inter_goal_vMax_ = new_coords.vMax;
+			inter_goal_k1_ = new_coords.k1;
+			inter_goal_k2_ = new_coords.k2;
+		}
+
+		l_plan_pub_.publish(get_trajectory_viz(new_coords));
+		rate_obj.sleep();
+	}
+  }
+
   void MpepcPlannerROS::nav_cost_cb(const mpepc_global_planner::NavigationCost::ConstPtr& nav_cost)
   {
 	  global_potarr_ = nav_cost->potential_cost;
@@ -157,9 +185,15 @@ namespace mpepc_local_planner {
 		return goal_reached_;
   }
 
+  MpepcPlannerROS::~MpepcPlannerROS(){
+	  if(!isPlanThreadStart_)
+	  {
+		  planner_thread_->interrupt();
+		  planner_thread_->join();
 
-  MpepcPlannerROS::~MpepcPlannerROS(){  }
-
+		  delete planner_thread_;
+	  }
+  }
 
   bool MpepcPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
     // if we don't have a plan, what are we doing here???
@@ -170,6 +204,14 @@ namespace mpepc_local_planner {
 			return false;
 		}
 
+		if(!isPlanThreadStart_)
+		{
+			//set up the local planner's thread
+			planner_thread_ = new boost::thread(boost::bind(&MpepcPlannerROS::planThread, this));
+			isPlanThreadStart_ = true;
+		}
+
+		// Default
 		cmd_vel.linear.x = 0;
 		cmd_vel.linear.y = 0;
 		cmd_vel.angular.z = 0;
@@ -195,20 +237,14 @@ namespace mpepc_local_planner {
 
 		ROS_INFO("Min distance of %f, %f: %f", currentPose.position.x, currentPose.position.y, minDist);*/
 
-		EgoGoal new_coords;
-		// Must update Obstacle Tree before using optimization technique
-		updateObstacleTree(costmap_ros_->getCostmap());
-		sim_current_pose_ = getCurrentRobotPose();
-		find_intermediate_goal_params(&new_coords);
-
-		l_plan_pub_.publish(get_trajectory_viz(new_coords));
-
-		EgoPolar inter_goal_coords;
-		inter_goal_coords.r = new_coords.r;
-		inter_goal_coords.delta = new_coords.delta;
-		inter_goal_coords.theta = new_coords.theta;
-		geometry_msgs::Pose inter_goal_pose = cl->convert_from_egopolar(sim_current_pose_, inter_goal_coords);
-		cmd_vel = cl->get_velocity_command(sim_current_pose_, inter_goal_pose, new_coords.k1, new_coords.k2, new_coords.vMax);
+		geometry_msgs::Pose currentPose = getCurrentRobotPose();
+		{
+			boost::mutex::scoped_lock lock(inter_goal_mutex_);
+			if(inter_goal_coords_.r != -1){
+				geometry_msgs::Pose inter_goal_pose = cl->convert_from_egopolar(currentPose, inter_goal_coords_);
+				cmd_vel = cl->get_velocity_command(currentPose, inter_goal_pose, inter_goal_k1_, inter_goal_k2_, inter_goal_vMax_);
+			}
+		}
 
 		/*
 		 * -------------------- END --------------------

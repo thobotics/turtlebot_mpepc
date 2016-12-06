@@ -250,11 +250,17 @@ namespace mpepc_local_planner {
 
 	  geometry_msgs::Pose sim_current_pose_;
 
+	  boost::mutex inter_goal_mutex_;
+	  EgoPolar inter_goal_coords_;
+	  double inter_goal_vMax_, inter_goal_k1_, inter_goal_k2_;
+	  bool isPlanThreadStart_;
+	  boost::thread* planner_thread_;
+
 	  geometry_msgs::Pose getCurrentRobotPose();
 
 	  // Function for mpepc optimization
 	  void nav_cost_cb(const mpepc_global_planner::NavigationCost::ConstPtr& nav_cost);
-
+	  void planThread();
 	  geometry_msgs::Pose transformOdomToMap(geometry_msgs::Pose local_pose);
 	  double getGlobalPlannerCost(geometry_msgs::Pose local_pose);
 	  double getGlobalPointPotential(geometry_msgs::Pose local_pose);
