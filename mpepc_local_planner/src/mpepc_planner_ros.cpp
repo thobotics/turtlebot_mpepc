@@ -46,6 +46,11 @@
 PLUGINLIB_EXPORT_CLASS(mpepc_local_planner::MpepcPlannerROS, nav_core::BaseLocalPlanner)
 
 namespace mpepc_local_planner {
+#define GOAL_DIST_UPDATE_THRESH   0.15   // in meters
+#define GOAL_ANGLE_UPDATE_THRESH  0.1   // in radians
+
+#define GOAL_DIST_ID_THRESH   0.1       // in meters
+#define GOAL_ANGLE_ID_THRESH  0.3       // in radians
 
   char* MpepcPlannerROS::cost_translation_table_ = NULL;
 
@@ -100,15 +105,14 @@ namespace mpepc_local_planner {
 			navfn_cost_ = private_nh.serviceClient<mpepc_global_planner::GetNavCost>("/move_base/NavfnROSExt/nav_cost");
 
 			// Initialize Motion Model
-			ControlLawSettings settings;
-			settings.m_K1 = K_1;
-			settings.m_K2 = K_2;
-			settings.m_BETA = BETA;
-			settings.m_LAMBDA = LAMBDA;
-			settings.m_R_THRESH = R_THRESH;
-			settings.m_V_MAX = V_MAX;
-			settings.m_V_MIN = V_MIN;
-			cl = new ControlLaw(settings);
+			settings_.m_K1 = K_1;
+			settings_.m_K2 = K_2;
+			settings_.m_BETA = BETA;
+			settings_.m_LAMBDA = LAMBDA;
+			settings_.m_R_THRESH = R_THRESH;
+			settings_.m_V_MAX = V_MAX;
+			settings_.m_V_MIN = 0.3;//V_MIN;
+			cl = new ControlLaw(settings_);
 
 			initialized_ = true;
 		}
@@ -118,12 +122,18 @@ namespace mpepc_local_planner {
   }
 
   void MpepcPlannerROS::planThread(){
-	// TODO: ROS rate here
-	ROS_INFO("Starting planner thread...");
+	ROS_INFO("Starting local planner thread...");
 
 	ros::NodeHandle n;
 	ros::Rate rate_obj(5.0); // Maximum 5Hz each loop
+
+	boost::unique_lock<boost::mutex> lock(planner_mutex_);
 	while(n.ok()){
+		while (isGoalReached()){
+			ROS_DEBUG("Planner thread is suspending");
+			planner_cond_.wait(lock);
+		}
+		lock.unlock();
 		EgoGoal new_coords;
 		// Must update Obstacle Tree before using optimization technique
 		updateObstacleTree(costmap_ros_->getCostmap());
@@ -142,6 +152,9 @@ namespace mpepc_local_planner {
 
 		l_plan_pub_.publish(get_trajectory_viz(new_coords));
 		rate_obj.sleep();
+
+		// lock to next
+		lock.lock();
 	}
   }
 
@@ -170,19 +183,23 @@ namespace mpepc_local_planner {
 		  // the local planner checks whether it is required to reinitialize the trajectory or not within each velocity computation step.
 
 		  // reset goal_reached_ flag
+		  boost::unique_lock<boost::mutex> lock(planner_mutex_);
 		  goal_reached_ = false;
+		  planner_cond_.notify_one();
+		  lock.unlock();
+
 
 		  return true;
   }
 
   bool MpepcPlannerROS::isGoalReached() {
     if (! isInitialized()) {
-		  ROS_ERROR("This planner has not been initialized, please call initialize() before using this planner");
-		  return false;
-		}
-		// TODO:
-		//  probably use some sort of goal tolerance parameters here
-		return goal_reached_;
+	  ROS_ERROR("This planner has not been initialized, please call initialize() before using this planner");
+	  return false;
+	}
+	// TODO:
+	//  probably use some sort of goal tolerance parameters here
+	return goal_reached_;
   }
 
   MpepcPlannerROS::~MpepcPlannerROS(){
@@ -212,39 +229,66 @@ namespace mpepc_local_planner {
 		}
 
 		// Default
-		cmd_vel.linear.x = 0;
+		/*cmd_vel.linear.x = 0;
 		cmd_vel.linear.y = 0;
-		cmd_vel.angular.z = 0;
-		goal_reached_ = false;
+		cmd_vel.angular.z = 0;*/
 
-		/**
-		 * TODO: Clear below and Apply real local plan
-		 * ---------------- START TESTING ----------------
-		 */
+		geometry_msgs::Pose current_pose = getCurrentRobotPose();
 
-		// Get robot pose
-		/*geometry_msgs::Pose currentPose = getCurrentRobotPose();
-		// nav_msgs::Odometry odom;
-		// odom_helper_.getOdom(odom);
-		// geometry_msgs::Pose currentPose = odom.pose.pose;
+		// Get goal pose. Note that plan from goal to start
+		geometry_msgs::PoseStamped global_goal_pose = global_plan_[0];
+		global_goal_pose.header.frame_id = "/map";
+		// This is important!!!
+		// It make transformPose to lookup the latest available transform
+		global_goal_pose.header.stamp = ros::Time(0);
+		geometry_msgs::PoseStamped local_goal_pose;
+		try{
+			tf_->waitForTransform(costmap_ros_->getGlobalFrameID(), "/map", ros::Time(0), ros::Duration(10.0));
+			tf_->transformPose(costmap_ros_->getGlobalFrameID(), global_goal_pose, local_goal_pose);
+		}catch (tf::TransformException & ex){
+			ROS_ERROR("Transform exception : %s", ex.what());
+		}
 
-		double cost = getGlobalPlannerCost(currentPose);
+		EgoPolar global_goal_coords;
+		global_goal_coords = cl->convert_to_egopolar(current_pose, local_goal_pose.pose);
 
-		// Must update Obstacle Tree before calculate minimum distance to obstacle
-		updateObstacleTree(costmap_ros_->getCostmap());
-		double obstacle_heading = 0.0;
-		double minDist = min_distance_to_obstacle(currentPose, &obstacle_heading);
-
-		ROS_INFO("Min distance of %f, %f: %f", currentPose.position.x, currentPose.position.y, minDist);*/
-
-		geometry_msgs::Pose currentPose = getCurrentRobotPose();
+		ROS_DEBUG("Distance to goal: %f", global_goal_coords.r);
+		if (global_goal_coords.r <= GOAL_DIST_UPDATE_THRESH)
 		{
-			boost::mutex::scoped_lock lock(inter_goal_mutex_);
-			if(inter_goal_coords_.r != -1){
-				geometry_msgs::Pose inter_goal_pose = cl->convert_from_egopolar(currentPose, inter_goal_coords_);
-				cmd_vel = cl->get_velocity_command(currentPose, inter_goal_pose, inter_goal_k1_, inter_goal_k2_, inter_goal_vMax_);
+			double angle_error = tf::getYaw(current_pose.orientation) - tf::getYaw(local_goal_pose.pose.orientation);
+			angle_error = cl->wrap_pos_neg_pi(angle_error);
+			ROS_DEBUG("Angle error: %f", angle_error);
+			if (fabs(angle_error) > GOAL_ANGLE_UPDATE_THRESH)
+			{
+			  cmd_vel.linear.x = 0;
+			  if (angle_error > 0)
+				cmd_vel.angular.z = -4 * settings_.m_V_MIN;
+			  else
+				cmd_vel.angular.z = 4 * settings_.m_V_MIN;
+			}
+			else
+			{
+			  ROS_INFO("[MPEPC] Completed normal trajectory following");
+
+			  boost::unique_lock<boost::mutex> lock(planner_mutex_);
+			  goal_reached_ = true;
+			  lock.unlock();
+			  cmd_vel.linear.x = 0;
+			  cmd_vel.angular.z = 0;
 			}
 		}
+		else
+		{
+		  {
+			boost::mutex::scoped_lock lock(inter_goal_mutex_);
+			if(inter_goal_coords_.r != -1){
+				geometry_msgs::Pose inter_goal_pose = cl->convert_from_egopolar(current_pose, inter_goal_coords_);
+				cmd_vel = cl->get_velocity_command(current_pose, inter_goal_pose, inter_goal_k1_, inter_goal_k2_, inter_goal_vMax_);
+			}
+		  }
+		}
+
+
 
 		/*
 		 * -------------------- END --------------------

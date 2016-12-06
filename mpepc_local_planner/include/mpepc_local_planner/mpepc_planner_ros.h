@@ -237,6 +237,7 @@ namespace mpepc_local_planner {
 	  // Properties for mpepc optimization
 	  boost::mutex pose_mutex_, cost_map_mutex_;
 	  nav_msgs::GridCells cost_map;
+	  ControlLawSettings settings_;
 	  ControlLaw * cl;
 
 	  flann::Index<flann::L2<float> > * obs_tree;
@@ -250,7 +251,8 @@ namespace mpepc_local_planner {
 
 	  geometry_msgs::Pose sim_current_pose_;
 
-	  boost::mutex inter_goal_mutex_;
+	  boost::mutex planner_mutex_, inter_goal_mutex_;
+	  boost::condition_variable planner_cond_;
 	  EgoPolar inter_goal_coords_;
 	  double inter_goal_vMax_, inter_goal_k1_, inter_goal_k2_;
 	  bool isPlanThreadStart_;
