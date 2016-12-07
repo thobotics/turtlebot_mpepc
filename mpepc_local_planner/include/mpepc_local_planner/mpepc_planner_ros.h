@@ -257,6 +257,7 @@ namespace mpepc_local_planner {
 	  double inter_goal_vMax_, inter_goal_k1_, inter_goal_k2_;
 	  bool isPlanThreadStart_;
 	  boost::thread* planner_thread_;
+	  geometry_msgs::Pose local_goal_pose_;
 
 	  geometry_msgs::Pose getCurrentRobotPose();
 

@@ -111,7 +111,7 @@ namespace mpepc_local_planner {
 			settings_.m_LAMBDA = LAMBDA;
 			settings_.m_R_THRESH = R_THRESH;
 			settings_.m_V_MAX = V_MAX;
-			settings_.m_V_MIN = 0.3;//V_MIN;
+			settings_.m_V_MIN = 0.2;//V_MIN;
 			cl = new ControlLaw(settings_);
 
 			initialized_ = true;
@@ -170,26 +170,42 @@ namespace mpepc_local_planner {
 
   bool MpepcPlannerROS::setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan) {
     if(!initialized_)
-		  {
-		    ROS_ERROR("MPEPCPlanner has not been initialized, please call initialize() before using this planner");
-		    return false;
-		  }
+	{
+		ROS_ERROR("MPEPCPlanner has not been initialized, please call initialize() before using this planner");
+		return false;
+	}
 
-		  // store the global plan
-		  global_plan_.clear();
-		  global_plan_ = orig_global_plan;
+	// store the global plan
+	global_plan_.clear();
+	global_plan_ = orig_global_plan;
 
-		  // we do not clear the local planner here, since setPlan is called frequently whenever the global planner updates the plan.
-		  // the local planner checks whether it is required to reinitialize the trajectory or not within each velocity computation step.
+	// Get goal pose. Note that plan from goal to start
+	geometry_msgs::PoseStamped global_goal_pose = global_plan_[0];
+	global_goal_pose.header.frame_id = "/map";
+	// This is important!!!
+	// It make transformPose to lookup the latest available transform
+	global_goal_pose.header.stamp = ros::Time(0);
+	geometry_msgs::PoseStamped local_pose_stamp;
+	try{
+		tf_->waitForTransform(costmap_ros_->getGlobalFrameID(), "/map", ros::Time(0), ros::Duration(10.0));
+		tf_->transformPose(costmap_ros_->getGlobalFrameID(), global_goal_pose, local_pose_stamp);
+	}catch (tf::TransformException & ex){
+		ROS_ERROR("Transform exception : %s", ex.what());
+	}
 
-		  // reset goal_reached_ flag
-		  boost::unique_lock<boost::mutex> lock(planner_mutex_);
-		  goal_reached_ = false;
-		  planner_cond_.notify_one();
-		  lock.unlock();
+	local_goal_pose_ = local_pose_stamp.pose;
+
+	// we do not clear the local planner here, since setPlan is called frequently whenever the global planner updates the plan.
+	// the local planner checks whether it is required to reinitialize the trajectory or not within each velocity computation step.
+
+	// reset goal_reached_ flag
+	boost::unique_lock<boost::mutex> lock(planner_mutex_);
+	goal_reached_ = false;
+	planner_cond_.notify_one();
+	lock.unlock();
 
 
-		  return true;
+	return true;
   }
 
   bool MpepcPlannerROS::isGoalReached() {
@@ -235,29 +251,16 @@ namespace mpepc_local_planner {
 
 		geometry_msgs::Pose current_pose = getCurrentRobotPose();
 
-		// Get goal pose. Note that plan from goal to start
-		geometry_msgs::PoseStamped global_goal_pose = global_plan_[0];
-		global_goal_pose.header.frame_id = "/map";
-		// This is important!!!
-		// It make transformPose to lookup the latest available transform
-		global_goal_pose.header.stamp = ros::Time(0);
-		geometry_msgs::PoseStamped local_goal_pose;
-		try{
-			tf_->waitForTransform(costmap_ros_->getGlobalFrameID(), "/map", ros::Time(0), ros::Duration(10.0));
-			tf_->transformPose(costmap_ros_->getGlobalFrameID(), global_goal_pose, local_goal_pose);
-		}catch (tf::TransformException & ex){
-			ROS_ERROR("Transform exception : %s", ex.what());
-		}
-
 		EgoPolar global_goal_coords;
-		global_goal_coords = cl->convert_to_egopolar(current_pose, local_goal_pose.pose);
+		global_goal_coords = cl->convert_to_egopolar(current_pose, local_goal_pose_);
 
 		ROS_DEBUG("Distance to goal: %f", global_goal_coords.r);
 		if (global_goal_coords.r <= GOAL_DIST_UPDATE_THRESH)
 		{
-			double angle_error = tf::getYaw(current_pose.orientation) - tf::getYaw(local_goal_pose.pose.orientation);
+			double angle_error = tf::getYaw(current_pose.orientation) - tf::getYaw(local_goal_pose_.orientation);
 			angle_error = cl->wrap_pos_neg_pi(angle_error);
 			ROS_DEBUG("Angle error: %f", angle_error);
+
 			if (fabs(angle_error) > GOAL_ANGLE_UPDATE_THRESH)
 			{
 			  cmd_vel.linear.x = 0;
