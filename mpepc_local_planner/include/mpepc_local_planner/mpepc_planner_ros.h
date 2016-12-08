@@ -256,7 +256,9 @@ namespace mpepc_local_planner {
 	  EgoPolar inter_goal_coords_;
 	  double inter_goal_vMax_, inter_goal_k1_, inter_goal_k2_;
 	  bool isPlanThreadStart_;
+	  bool run_planner_;
 	  boost::thread* planner_thread_;
+	  geometry_msgs::PoseStamped global_goal_pose_stamped_;
 	  geometry_msgs::Pose local_goal_pose_;
 
 	  geometry_msgs::Pose getCurrentRobotPose();
@@ -264,6 +266,7 @@ namespace mpepc_local_planner {
 	  // Function for mpepc optimization
 	  void nav_cost_cb(const mpepc_global_planner::NavigationCost::ConstPtr& nav_cost);
 	  void planThread();
+	  bool same_global_goal(geometry_msgs::PoseStamped new_goal);
 	  geometry_msgs::Pose transformOdomToMap(geometry_msgs::Pose local_pose);
 	  double getGlobalPlannerCost(geometry_msgs::Pose local_pose);
 	  double getGlobalPointPotential(geometry_msgs::Pose local_pose);

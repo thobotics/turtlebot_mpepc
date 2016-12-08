@@ -55,7 +55,9 @@ namespace mpepc_local_planner {
   char* MpepcPlannerROS::cost_translation_table_ = NULL;
 
   MpepcPlannerROS::MpepcPlannerROS() : initialized_(false),
-		  odom_helper_("odom"), goal_reached_(false), isPlanThreadStart_(false) {
+		  odom_helper_("odom"), goal_reached_(false), isPlanThreadStart_(false),
+  	  	  run_planner_(true)
+  {
 	  inter_goal_coords_.r = -1;
   }
 
@@ -129,7 +131,7 @@ namespace mpepc_local_planner {
 
 	boost::unique_lock<boost::mutex> lock(planner_mutex_);
 	while(n.ok()){
-		while (isGoalReached()){
+		while (!run_planner_){
 			ROS_DEBUG("Planner thread is suspending");
 			planner_cond_.wait(lock);
 		}
@@ -181,28 +183,42 @@ namespace mpepc_local_planner {
 
 	// Get goal pose. Note that plan from goal to start
 	geometry_msgs::PoseStamped global_goal_pose = global_plan_[0];
-	global_goal_pose.header.frame_id = "/map";
-	// This is important!!!
-	// It make transformPose to lookup the latest available transform
-	global_goal_pose.header.stamp = ros::Time(0);
-	geometry_msgs::PoseStamped local_pose_stamp;
-	try{
-		tf_->waitForTransform(costmap_ros_->getGlobalFrameID(), "/map", ros::Time(0), ros::Duration(10.0));
-		tf_->transformPose(costmap_ros_->getGlobalFrameID(), global_goal_pose, local_pose_stamp);
-	}catch (tf::TransformException & ex){
-		ROS_ERROR("Transform exception : %s", ex.what());
+	if(!same_global_goal(global_goal_pose)){
+		global_goal_pose_stamped_ = global_goal_pose;
+
+		global_goal_pose.header.frame_id = "/map";
+		// This is important!!!
+		// It make transformPose to lookup the latest available transform
+		global_goal_pose.header.stamp = ros::Time(0);
+		geometry_msgs::PoseStamped local_pose_stamp;
+		tf::StampedTransform transform;
+		try{
+			tf_->waitForTransform(costmap_ros_->getGlobalFrameID(), "/map", ros::Time(0), ros::Duration(10.0));
+			tf_->transformPose(costmap_ros_->getGlobalFrameID(), global_goal_pose, local_pose_stamp);
+		}catch (tf::TransformException & ex){
+			ROS_ERROR("Transform exception : %s", ex.what());
+		}
+
+		local_goal_pose_ = local_pose_stamp.pose;
+
+		/*ROS_INFO("Local goal update: x %f, y %f; ",
+			local_goal_pose_.position.x, global_goal_pose.pose.position.y);
+		ROS_INFO("Orientation: w %f, x %f, y %f, z %f",
+			local_goal_pose_.orientation.w,
+			local_goal_pose_.orientation.x,
+			local_goal_pose_.orientation.y,
+			local_goal_pose_.orientation.z);*/
+
+		// we do not clear the local planner here, since setPlan is called frequently whenever the global planner updates the plan.
+		// the local planner checks whether it is required to reinitialize the trajectory or not within each velocity computation step.
+
+		// reset goal_reached_ flag
+		goal_reached_ = false;
+		boost::unique_lock<boost::mutex> lock(planner_mutex_);
+		run_planner_ = true;
+		planner_cond_.notify_one();
+		lock.unlock();
 	}
-
-	local_goal_pose_ = local_pose_stamp.pose;
-
-	// we do not clear the local planner here, since setPlan is called frequently whenever the global planner updates the plan.
-	// the local planner checks whether it is required to reinitialize the trajectory or not within each velocity computation step.
-
-	// reset goal_reached_ flag
-	boost::unique_lock<boost::mutex> lock(planner_mutex_);
-	goal_reached_ = false;
-	planner_cond_.notify_one();
-	lock.unlock();
 
 
 	return true;
@@ -231,72 +247,93 @@ namespace mpepc_local_planner {
   bool MpepcPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
     // if we don't have a plan, what are we doing here???
     // check if plugin initialized
-		if(!initialized_)
+	if(!initialized_)
+	{
+		ROS_ERROR("MPEPCPlanner has not been initialized, please call initialize() before using this planner");
+		return false;
+	}
+
+	if(!isPlanThreadStart_)
+	{
+		//set up the local planner's thread
+		planner_thread_ = new boost::thread(boost::bind(&MpepcPlannerROS::planThread, this));
+		isPlanThreadStart_ = true;
+	}
+
+	// Default
+	/*cmd_vel.linear.x = 0;
+	cmd_vel.linear.y = 0;
+	cmd_vel.angular.z = 0;*/
+
+	geometry_msgs::Pose current_pose = getCurrentRobotPose();
+
+	EgoPolar global_goal_coords;
+	global_goal_coords = cl->convert_to_egopolar(current_pose, local_goal_pose_);
+
+	ROS_DEBUG("Distance to goal: %f", global_goal_coords.r);
+	if (global_goal_coords.r <= GOAL_DIST_UPDATE_THRESH)
+	{
+		// Stop planner. Now just steering to right orientation
+		boost::unique_lock<boost::mutex> lock(planner_mutex_);
+		run_planner_ = false;
+		lock.unlock();
+
+		double angle_error = tf::getYaw(current_pose.orientation) - tf::getYaw(local_goal_pose_.orientation);
+		angle_error = cl->wrap_pos_neg_pi(angle_error);
+		ROS_DEBUG("Angle error: %f", angle_error);
+
+		if (fabs(angle_error) > GOAL_ANGLE_UPDATE_THRESH)
 		{
-			ROS_ERROR("MPEPCPlanner has not been initialized, please call initialize() before using this planner");
-			return false;
-		}
-
-		if(!isPlanThreadStart_)
-		{
-			//set up the local planner's thread
-			planner_thread_ = new boost::thread(boost::bind(&MpepcPlannerROS::planThread, this));
-			isPlanThreadStart_ = true;
-		}
-
-		// Default
-		/*cmd_vel.linear.x = 0;
-		cmd_vel.linear.y = 0;
-		cmd_vel.angular.z = 0;*/
-
-		geometry_msgs::Pose current_pose = getCurrentRobotPose();
-
-		EgoPolar global_goal_coords;
-		global_goal_coords = cl->convert_to_egopolar(current_pose, local_goal_pose_);
-
-		ROS_DEBUG("Distance to goal: %f", global_goal_coords.r);
-		if (global_goal_coords.r <= GOAL_DIST_UPDATE_THRESH)
-		{
-			double angle_error = tf::getYaw(current_pose.orientation) - tf::getYaw(local_goal_pose_.orientation);
-			angle_error = cl->wrap_pos_neg_pi(angle_error);
-			ROS_DEBUG("Angle error: %f", angle_error);
-
-			if (fabs(angle_error) > GOAL_ANGLE_UPDATE_THRESH)
-			{
-			  cmd_vel.linear.x = 0;
-			  if (angle_error > 0)
-				cmd_vel.angular.z = -4 * settings_.m_V_MIN;
-			  else
-				cmd_vel.angular.z = 4 * settings_.m_V_MIN;
-			}
-			else
-			{
-			  ROS_INFO("[MPEPC] Completed normal trajectory following");
-
-			  boost::unique_lock<boost::mutex> lock(planner_mutex_);
-			  goal_reached_ = true;
-			  lock.unlock();
-			  cmd_vel.linear.x = 0;
-			  cmd_vel.angular.z = 0;
-			}
+		  cmd_vel.linear.x = 0;
+		  if (angle_error > 0)
+			cmd_vel.angular.z = -4 * settings_.m_V_MIN;
+		  else
+			cmd_vel.angular.z = 4 * settings_.m_V_MIN;
 		}
 		else
 		{
-		  {
-			boost::mutex::scoped_lock lock(inter_goal_mutex_);
-			if(inter_goal_coords_.r != -1){
-				geometry_msgs::Pose inter_goal_pose = cl->convert_from_egopolar(current_pose, inter_goal_coords_);
-				cmd_vel = cl->get_velocity_command(current_pose, inter_goal_pose, inter_goal_k1_, inter_goal_k2_, inter_goal_vMax_);
-			}
-		  }
+		  ROS_INFO("[MPEPC] Completed normal trajectory following");
+		  goal_reached_ = true;
+		  cmd_vel.linear.x = 0;
+		  cmd_vel.angular.z = 0;
 		}
+	}
+	else
+	{
+	  {
+		boost::mutex::scoped_lock lock(inter_goal_mutex_);
+		if(inter_goal_coords_.r != -1){
+			geometry_msgs::Pose inter_goal_pose = cl->convert_from_egopolar(current_pose, inter_goal_coords_);
+			cmd_vel = cl->get_velocity_command(current_pose, inter_goal_pose, inter_goal_k1_, inter_goal_k2_, inter_goal_vMax_);
+		}
+	  }
+	}
 
 
 
-		/*
-		 * -------------------- END --------------------
-		 */
-		return true;
+	/*
+	 * -------------------- END --------------------
+	 */
+	return true;
+  }
+
+  bool MpepcPlannerROS::same_global_goal(geometry_msgs::PoseStamped new_goal){
+	bool isSameGoal = false;
+
+	float goal_dist = sqrt(((global_goal_pose_stamped_.pose.position.x - new_goal.pose.position.x)
+            * (global_goal_pose_stamped_.pose.position.x - new_goal.pose.position.x)) +
+             ((global_goal_pose_stamped_.pose.position.y - new_goal.pose.position.y)
+            * (global_goal_pose_stamped_.pose.position.y - new_goal.pose.position.y)));
+	float goal_angle_dist = fabs(tf::getYaw(global_goal_pose_stamped_.pose.orientation) - tf::getYaw(new_goal.pose.orientation));
+	if (goal_dist < GOAL_DIST_ID_THRESH)
+	{
+		if (goal_angle_dist < GOAL_ANGLE_ID_THRESH)
+		{
+		  isSameGoal = true;
+		}
+	}
+
+	return isSameGoal;
   }
 
   geometry_msgs::Pose MpepcPlannerROS::getCurrentRobotPose(){

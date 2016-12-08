@@ -42,6 +42,11 @@ namespace navfn {
 				  const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan){
 		bool result = NavfnROS::makePlan(goal, start, plan);
 
+		// Now copy orientation of goal pose to plan
+		geometry_msgs::PoseStamped goal_copy = goal;
+		goal_copy.header.stamp = ros::Time::now();
+		plan[0] = goal_copy;
+
 		mpepc_global_planner::NavigationCost nav_cost;
 		float * tmp = planner_->potarr;
 		std::vector<float> potarr(tmp, tmp + (unsigned int)planner_->ns);
