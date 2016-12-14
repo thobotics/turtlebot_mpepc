@@ -253,19 +253,21 @@ namespace mpepc_local_planner {
 		return false;
 	}
 
-	if(!isPlanThreadStart_)
+	// TODO: Uncomment this
+	/*if(!isPlanThreadStart_)
 	{
 		//set up the local planner's thread
 		planner_thread_ = new boost::thread(boost::bind(&MpepcPlannerROS::planThread, this));
 		isPlanThreadStart_ = true;
-	}
+	}*/
 
 	// Default
-	/*cmd_vel.linear.x = 0;
+	cmd_vel.linear.x = 0;
 	cmd_vel.linear.y = 0;
-	cmd_vel.angular.z = 0;*/
+	cmd_vel.angular.z = 0;
 
-	geometry_msgs::Pose current_pose = getCurrentRobotPose();
+	// TODO: Uncomment this
+	/*geometry_msgs::Pose current_pose = getCurrentRobotPose();
 
 	EgoPolar global_goal_coords;
 	global_goal_coords = cl->convert_to_egopolar(current_pose, local_goal_pose_);
@@ -307,7 +309,7 @@ namespace mpepc_local_planner {
 			cmd_vel = cl->get_velocity_command(current_pose, inter_goal_pose, inter_goal_k1_, inter_goal_k2_, inter_goal_vMax_);
 		}
 	  }
-	}
+	}*/
 
 
 
