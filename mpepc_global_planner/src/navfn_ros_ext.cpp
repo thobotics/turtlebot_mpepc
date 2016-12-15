@@ -10,6 +10,7 @@
 #include <tf/transform_listener.h>
 #include <costmap_2d/cost_values.h>
 #include <costmap_2d/costmap_2d.h>
+#include <nav_msgs/OccupancyGrid.h>
 #include <math.h>
 
 //register this planner as a BaseGlobalPlanner plugin
@@ -33,6 +34,7 @@ namespace navfn {
 
 		ros::NodeHandle private_nh("~/" + name);
 		nav_cost_pub_ = private_nh.advertise<mpepc_global_planner::NavigationCost>("nav_cost_arr", 1);
+		nav_cost_map_pub_ = private_nh.advertise<nav_msgs::OccupancyGrid>("nav_cost_map", 1);
 		cost_service_ = private_nh.advertiseService("nav_cost", &NavfnROSExt::getNavigationCost, this);
 
 		ROS_INFO("Initialized NavfnROSExt");
@@ -57,6 +59,40 @@ namespace navfn {
 		nav_cost.info.origin.position.x = costmap_ros_->getCostmap()->getOriginX();
 		nav_cost.info.origin.position.y = costmap_ros_->getCostmap()->getOriginY();
 		nav_cost_pub_.publish(nav_cost);
+
+		nav_msgs::OccupancyGrid potentialMap;
+		std::vector<int8_t> potmap;
+		float max = -1;
+		float min = -1;
+		// Find min and max
+		for(std::vector<float>::size_type i = 0; i != potarr.size(); i++) {
+			if(potarr[i] < POT_HIGH && potarr[i] >= 0){
+				if(max == -1 || potarr[i] > max)
+					max = potarr[i];
+				if(min == -1 || potarr[i] < min)
+					min = potarr[i];
+			}
+		}
+		// Scale it to int 0 -> 100
+		for(std::vector<float>::size_type i = 0; i != potarr.size(); i++) {
+			float scale;
+			if(potarr[i] < POT_HIGH && potarr[i] >= 0){
+				scale = (potarr[i]- min)/(max - min)*100.0;
+				potmap.push_back(static_cast<int8_t>(scale));
+			}else{
+				potmap.push_back(-1);
+			}
+		}
+
+		potentialMap.data = potmap;
+		potentialMap.header.frame_id = costmap_ros_->getGlobalFrameID();
+		potentialMap.header.stamp = ros::Time::now();
+		potentialMap.info.width = costmap_ros_->getCostmap()->getSizeInCellsX();
+		potentialMap.info.height = costmap_ros_->getCostmap()->getSizeInCellsY();
+		potentialMap.info.resolution = map_resolution;
+		potentialMap.info.origin.position.x = costmap_ros_->getCostmap()->getOriginX();
+		potentialMap.info.origin.position.y = costmap_ros_->getCostmap()->getOriginY();
+		nav_cost_map_pub_.publish(potentialMap);
 		return result;
 	}
 

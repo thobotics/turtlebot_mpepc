@@ -6,11 +6,10 @@ Panels:
       Expanded:
         - /TF1/Frames1
         - /TF1/Tree1
-        - /Local Planning1
         - /Local Planning1/Costmap1
         - /Local Planning1/PoseArray(local)1
-        - /Global Planning1/Costmap1
-        - /Global Planning1/Planner1
+        - /Global Planning1
+        - /Global Planning1/Navigation CostMap1
       Splitter Ratio: 0.5
     Tree Height: 612
   - Class: rviz/Selection
@@ -511,6 +510,15 @@ Visualization Manager:
           Shaft Diameter: 0.1
           Shaft Length: 0.1
           Topic: /move_base/NavfnROSExt/plan
+          Unreliable: false
+          Value: true
+        - Alpha: 0.7
+          Class: rviz/Map
+          Color Scheme: costmap
+          Draw Behind: false
+          Enabled: true
+          Name: Navigation CostMap
+          Topic: /move_base/NavfnROSExt/nav_cost_map
           Unreliable: false
           Value: true
       Enabled: true
