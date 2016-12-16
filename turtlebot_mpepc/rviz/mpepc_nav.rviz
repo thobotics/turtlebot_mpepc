@@ -8,6 +8,7 @@ Panels:
         - /TF1/Tree1
         - /Local Planning1/Costmap1
         - /Global Planning1
+        - /Global Planning1/Navigation CostMap1
       Splitter Ratio: 0.5
     Tree Height: 612
   - Class: rviz/Selection
@@ -502,6 +503,15 @@ Visualization Manager:
           Topic: /move_base/DWAPlannerROS/global_plan
           Unreliable: false
           Value: true
+        - Alpha: 0.7
+          Class: rviz/Map
+          Color Scheme: costmap
+          Draw Behind: false
+          Enabled: true
+          Name: Navigation CostMap
+          Topic: /move_base/NavfnROSExt/nav_cost_map
+          Unreliable: false
+          Value: true
       Enabled: true
       Name: Global Planning
     - Alpha: 1
@@ -595,22 +605,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 20.2007
+      Distance: 11.6096
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 5.78057
-        Y: 8.01671
-        Z: -0.435123
+        X: 0.901576
+        Y: -0.2148
+        Z: -0.231388
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 1.5298
+      Pitch: 1.5698
       Target Frame: base_link
       Value: Orbit (rviz)
-      Yaw: 6.14821
+      Yaw: 4.58821
     Saved: ~
 Window Geometry:
   Displays:

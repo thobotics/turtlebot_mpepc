@@ -40,6 +40,7 @@ namespace navfn {
 			  const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);
   private:
 	  ros::Publisher nav_cost_pub_;
+	  ros::Publisher nav_cost_map_pub_;
 	  ros::ServiceServer cost_service_;
 
 	  double map_resolution;
