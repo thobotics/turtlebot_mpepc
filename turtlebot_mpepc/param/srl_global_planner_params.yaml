@@ -17,8 +17,8 @@ Srl_global_planner:
   PUBLISH_GRID: 1
   # Set Goal Tollerance in the RRT planner
   GOAL_TOLL: 0.5
-  # True to select Theta* (1), False (0) to select A*
-  select_globalplanner: 1
+  # True to select Theta* (1), False (0) to select A*, 2 to Dijkstra (default Global planner)
+  select_globalplanner: 2
   # Minimum cell probability to accept a cell as obstacle in the Grid Planner (see costmap and grid map msg documentation)
   LEVEL_OBSTACLE_: 1
   # Minimum cell cost to have to accept a cell as obstacle in the RRT Planner(see costmap documentation)
@@ -114,9 +114,9 @@ Srl_global_planner:
   # Choose if to add cost from global cost map
   ADD_COST_FROM_COSTMAP: true
   # Choose if to add cost associated to path length and changes of heading
-  ADD_COST_PATHLENGTH: 0
+  ADD_COST_PATHLENGTH: 1
   # Choose if to add cost closeness to thetastar path
-  ADD_COST_THETASTAR: 0
+  ADD_COST_THETASTAR: 1
   # Choose the model
   # if MODEL_COST==0, Repulsive Force
   # if MODEL_COST==1, Attractive Force
