@@ -103,7 +103,7 @@ namespace mpepc_local_planner {
 			}
 
 			// FOR mpepc_plan
-			navfn_cost_sub_ = private_nh.subscribe<mpepc_global_planner::NavigationCost> ("/move_base/NavfnROSExt/nav_cost_arr", 1, &MpepcPlannerROS::nav_cost_cb, this);
+			navfn_cost_sub_ = private_nh.subscribe<nav_msgs::OccupancyGrid> ("/move_base/NavfnROSExt/nav_cost_map", 1, &MpepcPlannerROS::nav_cost_cb, this);
 			navfn_cost_ = private_nh.serviceClient<mpepc_global_planner::GetNavCost>("/move_base/NavfnROSExt/nav_cost");
 
 			// Initialize Motion Model
@@ -160,9 +160,9 @@ namespace mpepc_local_planner {
 	}
   }
 
-  void MpepcPlannerROS::nav_cost_cb(const mpepc_global_planner::NavigationCost::ConstPtr& nav_cost)
+  void MpepcPlannerROS::nav_cost_cb(const nav_msgs::OccupancyGrid::ConstPtr& nav_cost)
   {
-	  global_potarr_ = nav_cost->potential_cost;
+	  global_potarr_ = nav_cost->data;
 	  global_width_ = nav_cost->info.width;
 	  global_height_ = nav_cost->info.height;
 	  origin_x_ = nav_cost->info.origin.position.x;
@@ -457,7 +457,10 @@ namespace mpepc_local_planner {
 	  return DBL_MAX;
 
 	unsigned int index = my * global_width_ + mx;
-	return global_potarr_[index];
+	if(global_potarr_[index] == -1){
+		return POT_HIGH;
+	}else
+		return global_potarr_[index];
   }
 
   void MpepcPlannerROS::updateObstacleTree(costmap_2d::Costmap2D *costmap){
