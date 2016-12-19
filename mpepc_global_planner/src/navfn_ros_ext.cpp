@@ -12,6 +12,7 @@
 #include <costmap_2d/costmap_2d.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <math.h>
+#include <algorithm>
 
 //register this planner as a BaseGlobalPlanner plugin
 PLUGINLIB_DECLARE_CLASS(navfn, NavfnROSExt, navfn::NavfnROSExt, nav_core::BaseGlobalPlanner)
@@ -45,9 +46,10 @@ namespace navfn {
 		bool result = NavfnROS::makePlan(goal, start, plan);
 
 		// Now copy orientation of goal pose to plan
-		geometry_msgs::PoseStamped goal_copy = goal;
+		/*geometry_msgs::PoseStamped goal_copy = goal;
 		goal_copy.header.stamp = ros::Time::now();
-		plan[0] = goal_copy;
+		plan[0] = goal_copy;*/
+		std::reverse(plan.begin(), plan.end());
 
 		mpepc_global_planner::NavigationCost nav_cost;
 		float * tmp = planner_->potarr;

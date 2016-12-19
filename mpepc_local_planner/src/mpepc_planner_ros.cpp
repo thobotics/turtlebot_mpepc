@@ -46,7 +46,7 @@
 PLUGINLIB_EXPORT_CLASS(mpepc_local_planner::MpepcPlannerROS, nav_core::BaseLocalPlanner)
 
 namespace mpepc_local_planner {
-#define GOAL_DIST_UPDATE_THRESH   0.15   // in meters
+#define GOAL_DIST_UPDATE_THRESH   0.5   // in meters
 #define GOAL_ANGLE_UPDATE_THRESH  0.1   // in radians
 
 #define GOAL_DIST_ID_THRESH   0.1       // in meters
@@ -103,6 +103,7 @@ namespace mpepc_local_planner {
 			}
 
 			// FOR mpepc_plan
+			//navfn_cost_sub_ = private_nh.subscribe<nav_msgs::OccupancyGrid> ("/move_base/Srl_global_planner/rrt_potential_collision_free", 1, &MpepcPlannerROS::nav_cost_cb, this);
 			navfn_cost_sub_ = private_nh.subscribe<nav_msgs::OccupancyGrid> ("/move_base/NavfnROSExt/nav_cost_map", 1, &MpepcPlannerROS::nav_cost_cb, this);
 			navfn_cost_ = private_nh.serviceClient<mpepc_global_planner::GetNavCost>("/move_base/NavfnROSExt/nav_cost");
 
@@ -181,8 +182,8 @@ namespace mpepc_local_planner {
 	global_plan_.clear();
 	global_plan_ = orig_global_plan;
 
-	// Get goal pose. Note that plan from goal to start
-	geometry_msgs::PoseStamped global_goal_pose = global_plan_[0];
+	// Get goal pose. Note that plan from start to goal
+	geometry_msgs::PoseStamped global_goal_pose = global_plan_.back();
 	if(!same_global_goal(global_goal_pose)){
 		global_goal_pose_stamped_ = global_goal_pose;
 
@@ -196,7 +197,7 @@ namespace mpepc_local_planner {
 			tf_->waitForTransform(costmap_ros_->getGlobalFrameID(), "/map", ros::Time(0), ros::Duration(10.0));
 			tf_->transformPose(costmap_ros_->getGlobalFrameID(), global_goal_pose, local_pose_stamp);
 		}catch (tf::TransformException & ex){
-			ROS_ERROR("Transform exception : %s", ex.what());
+			ROS_ERROR("Transform exception 222 : %s", ex.what());
 		}
 
 		local_goal_pose_ = local_pose_stamp.pose;
@@ -253,6 +254,7 @@ namespace mpepc_local_planner {
 		return false;
 	}
 
+	// TODO: Uncomment this
 	if(!isPlanThreadStart_)
 	{
 		//set up the local planner's thread
@@ -261,10 +263,11 @@ namespace mpepc_local_planner {
 	}
 
 	// Default
-	/*cmd_vel.linear.x = 0;
+	cmd_vel.linear.x = 0;
 	cmd_vel.linear.y = 0;
-	cmd_vel.angular.z = 0;*/
+	cmd_vel.angular.z = 0;
 
+	// TODO: Uncomment this
 	geometry_msgs::Pose current_pose = getCurrentRobotPose();
 
 	EgoPolar global_goal_coords;
@@ -395,7 +398,6 @@ namespace mpepc_local_planner {
 		// It make transformPose to lookup the latest available transform
 		local_point.header.stamp = ros::Time(0);
 		local_point.point = local_pose.position;
-
 		geometry_msgs::PointStamped global_point_stamp;
 		try{
 			tf_->waitForTransform("/map", costmap_ros_->getGlobalFrameID(), ros::Time(0), ros::Duration(10.0));
@@ -403,7 +405,6 @@ namespace mpepc_local_planner {
 		}catch (tf::TransformException & ex){
 			ROS_ERROR("Transform exception 111 : %s", ex.what());
 		}
-
 		//ROS_INFO("Transform plan take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
 		return global_point_stamp.point;
   }
@@ -453,6 +454,7 @@ namespace mpepc_local_planner {
 	  return DBL_MAX;
 
 	unsigned int index = my * global_width_ + mx;
+
 	if(global_potarr_[index] == -1){
 		return POT_HIGH;
 	}else

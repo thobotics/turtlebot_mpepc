@@ -70,4 +70,4 @@ floorplan
 
 # throw in a robot
 turtlebot( pose [ 17.340 15.540 0.000 87.363 ] name "turtlebot1" color "gray" gui_nose 1)
-block( pose [ 13.551 16.401 0.000 180.000 ] color "red")
+block( pose [ 13.903 16.228 0.000 180.000 ] color "red")

@@ -1,0 +1,154 @@
+# Move base node parameters. For full documentation of the parameters in this file, please see
+#
+#  http://www.ros.org/wiki/move_base
+#
+
+# If using GlobalPlanner
+GlobalPlanner:
+  use_dijkstra: true
+  allow_unknown: false
+  #use_grid_path: true
+  
+Srl_global_planner:
+  planner_frame: "map"
+  local_planner_frame: "odom"
+  map_topic: "map"
+  cell_size_x: 1
+  cell_size_y: 1
+  minx: 0
+  miny: 0
+  grid_width: 50
+  grid_height: 30
+  cell_width: 1
+  cell_height: 1
+  PUBLISH_GRID: 1
+  # Set Goal Tollerance in the RRT planner
+  GOAL_TOLL: 0.5
+  # True to select Theta* (1), False (0) to select A*, 2 to Dijkstra (default Global planner)
+  select_globalplanner: 2
+  # Minimum cell probability to accept a cell as obstacle in the Grid Planner (see costmap and grid map msg documentation)
+  LEVEL_OBSTACLE_: 1
+  # Minimum cell cost to have to accept a cell as obstacle in the RRT Planner(see costmap documentation)
+  LEVEL_COLLCHECKER_OBSTACLE_: 1
+  # Maximum number of search steps allowed
+  MAX_LIMIT_SEARCH_STEPS: 10000
+  min_cost_p: 0.5
+  # Frequency of the Grid planner
+  grid_planner_f: 5
+  # Choose between the type of stop condition
+  # value=1, based on max number of seconds allowed
+  # value=0, based on max number of RRT iterations allowed
+  TIMECOUNTER: 1
+  MAXTIME: 2
+  # WHAT_TO_SHOW = 0 Display nothing
+  # WHAT_TO_SHOW = 1 Display all the samples
+  # WHAT_TO_SHOW = 2 Display the nearest vertices
+  WHATTOSHOW: 2
+  # Rectangle Collision Checker Params for Daryl Robot
+  PARALLEL: 0
+  K: 5
+  RAD_OBST: 2.5
+  # Turtlebot
+  ROBOT_LENGTH: 0.30
+  ROBOT_WIDTH: 0.30
+  # According to the TIMECOUNTER
+  # it represents:
+  # - max number of seconds allowed or
+  # - max number of RRT iterations allowed
+  max_iterations: 100
+  # Choose between the type of distance metric
+  # value=2, Regression Neural Network
+  # value=1, Regression Basis Function Model
+  # value=0, POSQ 0.5
+  # value=3, Euclidean Distance
+  # value=4, IRL Cost
+  # value=5, IRL scaled + Smoothness
+  SELECT_FUNC: 1
+  SCALING_IRL: 1
+  COST_DISPLAY: 0
+  # Stop the planner at the first found solution
+  # value=1
+  FIRSTSOLUTION: 1
+  NRUNS: 1
+  NUMBER_UPDATE_TRAJ: 2
+  NOANIM: 0
+  DISPLAY_METRICS: 0
+  # Disply Debug info
+  # value=1
+  DEB_RRT: 1
+  # If GOALPARAM == 1 the goal is loaded from parameters
+  GOALPARAM: 0
+  # planner related parameters: select the type of planner you prefer.
+  # value=0 RRT
+  # value=1 RRT* with only one phase
+  # value=2 RRT* full
+  type_planner: 2
+  # If BOX == 1 BallBox Theorem Applied when Nearest Vertex is choosed
+  BOX: 0
+  # RADIUS is the value of the radius used to select the nearest vertex, if radius is ZERO than its value is choosed by RRT*
+  RADIUS: 0#4
+  RHO: 0.15
+  DT: 0.1
+  READ_AGENTS: 0
+  L_AXIS: 0.456
+  # Params Branching
+  THRS_BRANCHBOUND: 0.1
+  BRANCHBOUND: 0
+  BRANCHBOUND_RATIO: 100
+  # Params related to SAMPLING
+  # if TYPE_SAMPLING == 2 support set as gaussians over a spline fitting the Theta* waypoints
+  # If TYPE_SAMPLING == 1 support set as Gaussian
+  # if TYPE_SAMPLING == 0 support set as uniform over a strips
+  # if TYPE_SAMPLING == 3 support set as uniform over a strips  with round joints Theta* 
+  # if TYPE_SAMPLING == 4 support set as the entire state space
+  # if TYPE_SAMPLING == 5 Path Biasing
+  TYPE_SAMPLING: 3
+  # Goal Biasing valid only with TYPE_SAMPLING == 4
+  GOAL_BIASING: 1
+  GOAL_BIASING_ORIENTATION_RANGE: 0
+  GOAL_BIASING_THS: 0.15
+  # Trajectory biasing valid only with TYPE_SAMPLING == 5
+  BIAS_PROB: 0.99
+  DISPERSION: 0.5
+  SRCPARENT: 0
+  # OR_RANGE is the value of the orientation range
+  # OR_RANGE = M_PI = 3.14
+  # OR_RANGE = M_PI/2 = 1.57
+  OR_RANGE: 0.80
+  AVERAGING: 2
+  # Size of the strip if no Gaussian support is used
+  WIDTH_STRIP: 4
+  # Choose if to add cost from global cost map
+  ADD_COST_FROM_COSTMAP: true
+  # Choose if to add cost associated to path length and changes of heading
+  ADD_COST_PATHLENGTH: 1
+  # Choose if to add cost closeness to thetastar path
+  ADD_COST_THETASTAR: 1
+  # Choose the model
+  # if MODEL_COST==0, Repulsive Force
+  # if MODEL_COST==1, Attractive Force
+  # if MODEL_COST==2 Attractive Force + Orientation
+  MODEL_COST: 2
+  # Number of points of the trajectory between the evaluation of the Theta* cost
+  n_dis_traj: 25
+  # Params to set how to select the nearest vertex
+  # find the nearest vertex according to a cost
+  LEARNED: 0
+  # find the nearest vertex according to the Kd Tree Euclidean Distance
+  FINDNEAREST: 0
+  # Compute the Cost using the Basis Function Model if NOTLEARNED==0
+  NOTLEARNED: 1
+  # Params to include cost of the Theta* path distance
+  # In cost function associated to the Theta* path
+  Kd: 0.5
+  Kangle: 0.5
+  # In the cost function associated to the path length and heading changes 
+  Kdist: 0.5
+  Kor: 0.5
+  Kth: 1
+  # Param to tune how far the orientation has to converge to the average orientation between two theta* segments
+  Kround: 1
+  # Use external Sigmas definitions
+  EXT_SIGMAS: 1
+  SigmaoverX: 3
+  SigmaoverY: 3
