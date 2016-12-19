@@ -268,7 +268,7 @@ namespace mpepc_local_planner {
 	  void nav_cost_cb(const nav_msgs::OccupancyGrid::ConstPtr& nav_cost);
 	  void planThread();
 	  bool same_global_goal(geometry_msgs::PoseStamped new_goal);
-	  geometry_msgs::Pose transformOdomToMap(geometry_msgs::Pose local_pose);
+	  geometry_msgs::Point transformOdomToMap(geometry_msgs::Pose local_pose);
 	  double getGlobalPlannerCost(geometry_msgs::Pose local_pose);
 	  double getGlobalPointPotential(geometry_msgs::Pose local_pose);
 

@@ -386,32 +386,30 @@ namespace mpepc_local_planner {
 	return viz_plan;
   }
 
-  geometry_msgs::Pose MpepcPlannerROS::transformOdomToMap(geometry_msgs::Pose local_pose){
-    // Transform to global_pose
-	//clock_t begin_time = clock();
-	geometry_msgs::PoseStamped local_pose_stamp;
-	local_pose_stamp.header.frame_id = costmap_ros_->getGlobalFrameID();
-	// This is important!!!
-	// It make transformPose to lookup the latest available transform
-	local_pose_stamp.header.stamp = ros::Time(0);
-	local_pose_stamp.pose = local_pose;
+  geometry_msgs::Point MpepcPlannerROS::transformOdomToMap(geometry_msgs::Pose local_pose){
+	    // Transform to global_pose
+	  	//clock_t begin_time = clock();
+	  	geometry_msgs::PointStamped local_point;
+		local_point.header.frame_id = costmap_ros_->getGlobalFrameID();
+		// This is important!!!
+		// It make transformPose to lookup the latest available transform
+		local_point.header.stamp = ros::Time(0);
+		local_point.point = local_pose.position;
 
-	geometry_msgs::PoseStamped global_pose_stamp;
-	try{
-		tf_->waitForTransform("/map", costmap_ros_->getGlobalFrameID(), ros::Time(0), ros::Duration(10.0));
-		tf_->transformPose("/map", local_pose_stamp, global_pose_stamp);
-	}catch (tf::TransformException & ex){
-		ROS_ERROR("Transform exception : %s", ex.what());
-	}
+		geometry_msgs::PointStamped global_point_stamp;
+		try{
+			tf_->waitForTransform("/map", costmap_ros_->getGlobalFrameID(), ros::Time(0), ros::Duration(10.0));
+			tf_->transformPoint("/map", local_point, global_point_stamp);
+		}catch (tf::TransformException & ex){
+			ROS_ERROR("Transform exception 111 : %s", ex.what());
+		}
 
-	//ROS_INFO("Transform plan take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
-	return global_pose_stamp.pose;
+		//ROS_INFO("Transform plan take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
+		return global_point_stamp.point;
   }
 
   double MpepcPlannerROS::getGlobalPlannerCost(geometry_msgs::Pose local_pose){
-	geometry_msgs::Pose global_pose = transformOdomToMap(local_pose);
-	geometry_msgs::Point currentPoint;
-	currentPoint = global_pose.position;
+	geometry_msgs::Point currentPoint = transformOdomToMap(local_pose);
 	// Service request
 	mpepc_global_planner::GetNavCost service;
 	service.request.world_point = currentPoint;
@@ -436,9 +434,7 @@ namespace mpepc_local_planner {
 
   double MpepcPlannerROS::getGlobalPointPotential(geometry_msgs::Pose local_pose){
 	//clock_t begin_time = clock();
-	geometry_msgs::Pose global_pose = transformOdomToMap(local_pose);
-	geometry_msgs::Point currentPoint;
-	currentPoint = global_pose.position;
+	geometry_msgs::Point currentPoint = transformOdomToMap(local_pose);
 
 	// TODO: Interpolate here
 	bool flag = false;
