@@ -103,8 +103,8 @@ namespace mpepc_local_planner {
 			}
 
 			// FOR mpepc_plan
-			//navfn_cost_sub_ = private_nh.subscribe<nav_msgs::OccupancyGrid> ("/move_base/Srl_global_planner/rrt_potential_collision_free", 1, &MpepcPlannerROS::nav_cost_cb, this);
-			navfn_cost_sub_ = private_nh.subscribe<nav_msgs::OccupancyGrid> ("/move_base/NavfnROSExt/nav_cost_map", 1, &MpepcPlannerROS::nav_cost_cb, this);
+			navfn_cost_sub_ = private_nh.subscribe<nav_msgs::OccupancyGrid> ("/move_base/Srl_global_planner/rrt_potential_collision_free", 1, &MpepcPlannerROS::nav_cost_cb, this);
+			//navfn_cost_sub_ = private_nh.subscribe<nav_msgs::OccupancyGrid> ("/move_base/NavfnROSExt/nav_cost_map", 1, &MpepcPlannerROS::nav_cost_cb, this);
 			navfn_cost_ = private_nh.serviceClient<mpepc_global_planner::GetNavCost>("/move_base/NavfnROSExt/nav_cost");
 
 			// Initialize Motion Model

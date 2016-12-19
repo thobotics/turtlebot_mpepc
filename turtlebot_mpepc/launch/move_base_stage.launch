@@ -15,10 +15,10 @@
   <arg name="3d_sensor"  default="$(optenv TURTLEBOT_3D_SENSOR asus_xtion_pro)"/>  <!-- kinect, asus_xtion_pro -->
 
   <!-- Name of the map to use (without path nor extension) and initial position -->
-  <arg name="map_file"       default=" $(env TURTLEBOT_STAGE_MAP_FILE)"/> <!-- robopark_plan -->
-  <arg name="world_file"     default=" $(env TURTLEBOT_STAGE_WORLD_FILE)"/>
-  <!--<arg name="map_file"       default=" $(find turtlebot_mpepc)/maps/willow-full.yaml"/>
-  <arg name="world_file"     default=" $(find turtlebot_mpepc)/worlds/willow-full.world"/>-->
+  <!--<arg name="map_file"       default=" $(env TURTLEBOT_STAGE_MAP_FILE)"/>--> <!-- robopark_plan -->
+  <!--<arg name="world_file"     default=" $(env TURTLEBOT_STAGE_WORLD_FILE)"/>-->
+  <arg name="map_file"       default=" $(find turtlebot_mpepc)/maps/willow-full.yaml"/>
+  <arg name="world_file"     default=" $(find turtlebot_mpepc)/worlds/willow-full.world"/>
   <arg name="initial_pose_x" default="2.0"/>
   <arg name="initial_pose_y" default="2.0"/>
   <arg name="initial_pose_a" default="0.0"/>
