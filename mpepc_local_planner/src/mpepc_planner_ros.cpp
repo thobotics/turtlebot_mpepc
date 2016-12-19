@@ -46,7 +46,7 @@
 PLUGINLIB_EXPORT_CLASS(mpepc_local_planner::MpepcPlannerROS, nav_core::BaseLocalPlanner)
 
 namespace mpepc_local_planner {
-#define GOAL_DIST_UPDATE_THRESH   0.15   // in meters
+#define GOAL_DIST_UPDATE_THRESH   0.5   // in meters
 #define GOAL_ANGLE_UPDATE_THRESH  0.1   // in radians
 
 #define GOAL_DIST_ID_THRESH   0.1       // in meters
@@ -182,8 +182,8 @@ namespace mpepc_local_planner {
 	global_plan_.clear();
 	global_plan_ = orig_global_plan;
 
-	// Get goal pose. Note that plan from goal to start
-	geometry_msgs::PoseStamped global_goal_pose = global_plan_[0];
+	// Get goal pose. Note that plan from start to goal
+	geometry_msgs::PoseStamped global_goal_pose = global_plan_.back();
 	if(!same_global_goal(global_goal_pose)){
 		global_goal_pose_stamped_ = global_goal_pose;
 
