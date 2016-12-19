@@ -2,6 +2,13 @@
 #
 #  http://www.ros.org/wiki/move_base
 #
+
+# If using GlobalPlanner
+GlobalPlanner:
+  use_dijkstra: true
+  allow_unknown: false
+  #use_grid_path: true
+  
 Srl_global_planner:
   planner_frame: "map"
   local_planner_frame: "odom"
@@ -75,11 +82,11 @@ Srl_global_planner:
   # value=0 RRT
   # value=1 RRT* with only one phase
   # value=2 RRT* full
-  type_planner: 1
+  type_planner: 2
   # If BOX == 1 BallBox Theorem Applied when Nearest Vertex is choosed
   BOX: 0
   # RADIUS is the value of the radius used to select the nearest vertex, if radius is ZERO than its value is choosed by RRT*
-  RADIUS: 4
+  RADIUS: 0#4
   RHO: 0.15
   DT: 0.1
   READ_AGENTS: 0

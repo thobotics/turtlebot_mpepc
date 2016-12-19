@@ -103,7 +103,8 @@ namespace mpepc_local_planner {
 			}
 
 			// FOR mpepc_plan
-			navfn_cost_sub_ = private_nh.subscribe<mpepc_global_planner::NavigationCost> ("/move_base/NavfnROSExt/nav_cost_arr", 1, &MpepcPlannerROS::nav_cost_cb, this);
+			navfn_cost_sub_ = private_nh.subscribe<nav_msgs::OccupancyGrid> ("/move_base/Srl_global_planner/rrt_potential_collision_free", 1, &MpepcPlannerROS::nav_cost_cb, this);
+			//navfn_cost_sub_ = private_nh.subscribe<nav_msgs::OccupancyGrid> ("/move_base/NavfnROSExt/nav_cost_map", 1, &MpepcPlannerROS::nav_cost_cb, this);
 			navfn_cost_ = private_nh.serviceClient<mpepc_global_planner::GetNavCost>("/move_base/NavfnROSExt/nav_cost");
 
 			// Initialize Motion Model
@@ -160,9 +161,9 @@ namespace mpepc_local_planner {
 	}
   }
 
-  void MpepcPlannerROS::nav_cost_cb(const mpepc_global_planner::NavigationCost::ConstPtr& nav_cost)
+  void MpepcPlannerROS::nav_cost_cb(const nav_msgs::OccupancyGrid::ConstPtr& nav_cost)
   {
-	  global_potarr_ = nav_cost->potential_cost;
+	  global_potarr_ = nav_cost->data;//nav_cost->potential_cost;
 	  global_width_ = nav_cost->info.width;
 	  global_height_ = nav_cost->info.height;
 	  origin_x_ = nav_cost->info.origin.position.x;
@@ -196,7 +197,7 @@ namespace mpepc_local_planner {
 			tf_->waitForTransform(costmap_ros_->getGlobalFrameID(), "/map", ros::Time(0), ros::Duration(10.0));
 			tf_->transformPose(costmap_ros_->getGlobalFrameID(), global_goal_pose, local_pose_stamp);
 		}catch (tf::TransformException & ex){
-			ROS_ERROR("Transform exception : %s", ex.what());
+			ROS_ERROR("Transform exception 222 : %s", ex.what());
 		}
 
 		local_goal_pose_ = local_pose_stamp.pose;
@@ -254,12 +255,12 @@ namespace mpepc_local_planner {
 	}
 
 	// TODO: Uncomment this
-	/*if(!isPlanThreadStart_)
+	if(!isPlanThreadStart_)
 	{
 		//set up the local planner's thread
 		planner_thread_ = new boost::thread(boost::bind(&MpepcPlannerROS::planThread, this));
 		isPlanThreadStart_ = true;
-	}*/
+	}
 
 	// Default
 	cmd_vel.linear.x = 0;
@@ -267,7 +268,7 @@ namespace mpepc_local_planner {
 	cmd_vel.angular.z = 0;
 
 	// TODO: Uncomment this
-	/*geometry_msgs::Pose current_pose = getCurrentRobotPose();
+	geometry_msgs::Pose current_pose = getCurrentRobotPose();
 
 	EgoPolar global_goal_coords;
 	global_goal_coords = cl->convert_to_egopolar(current_pose, local_goal_pose_);
@@ -309,7 +310,7 @@ namespace mpepc_local_planner {
 			cmd_vel = cl->get_velocity_command(current_pose, inter_goal_pose, inter_goal_k1_, inter_goal_k2_, inter_goal_vMax_);
 		}
 	  }
-	}*/
+	}
 
 
 
@@ -388,32 +389,30 @@ namespace mpepc_local_planner {
 	return viz_plan;
   }
 
-  geometry_msgs::Pose MpepcPlannerROS::transformOdomToMap(geometry_msgs::Pose local_pose){
-    // Transform to global_pose
-	//clock_t begin_time = clock();
-	geometry_msgs::PoseStamped local_pose_stamp;
-	local_pose_stamp.header.frame_id = costmap_ros_->getGlobalFrameID();
-	// This is important!!!
-	// It make transformPose to lookup the latest available transform
-	local_pose_stamp.header.stamp = ros::Time(0);
-	local_pose_stamp.pose = local_pose;
+  geometry_msgs::Point MpepcPlannerROS::transformOdomToMap(geometry_msgs::Pose local_pose){
+	  	// Transform to global_pose
+		//clock_t begin_time = clock();
+		geometry_msgs::PointStamped local_point;
+		local_point.header.frame_id = costmap_ros_->getGlobalFrameID();
+		// This is important!!!
+		// It make transformPose to lookup the latest available transform
+		local_point.header.stamp = ros::Time(0);
+		local_point.point = local_pose.position;
 
-	geometry_msgs::PoseStamped global_pose_stamp;
-	try{
-		tf_->waitForTransform("/map", costmap_ros_->getGlobalFrameID(), ros::Time(0), ros::Duration(10.0));
-		tf_->transformPose("/map", local_pose_stamp, global_pose_stamp);
-	}catch (tf::TransformException & ex){
-		ROS_ERROR("Transform exception : %s", ex.what());
-	}
+		geometry_msgs::PointStamped global_point_stamp;
+		try{
+			tf_->waitForTransform("/map", costmap_ros_->getGlobalFrameID(), ros::Time(0), ros::Duration(10.0));
+			tf_->transformPoint("/map", local_point, global_point_stamp);
+		}catch (tf::TransformException & ex){
+			ROS_ERROR("Transform exception 111 : %s", ex.what());
+		}
 
-	//ROS_INFO("Transform plan take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
-	return global_pose_stamp.pose;
+		//ROS_INFO("Transform plan take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
+		return global_point_stamp.point;
   }
 
   double MpepcPlannerROS::getGlobalPlannerCost(geometry_msgs::Pose local_pose){
-	geometry_msgs::Pose global_pose = transformOdomToMap(local_pose);
-	geometry_msgs::Point currentPoint;
-	currentPoint = global_pose.position;
+	geometry_msgs::Point currentPoint = transformOdomToMap(local_pose);
 	// Service request
 	mpepc_global_planner::GetNavCost service;
 	service.request.world_point = currentPoint;
@@ -438,9 +437,7 @@ namespace mpepc_local_planner {
 
   double MpepcPlannerROS::getGlobalPointPotential(geometry_msgs::Pose local_pose){
 	//clock_t begin_time = clock();
-	geometry_msgs::Pose global_pose = transformOdomToMap(local_pose);
-	geometry_msgs::Point currentPoint;
-	currentPoint = global_pose.position;
+	geometry_msgs::Point currentPoint = transformOdomToMap(local_pose);
 
 	// TODO: Interpolate here
 	bool flag = false;
@@ -459,7 +456,11 @@ namespace mpepc_local_planner {
 	  return DBL_MAX;
 
 	unsigned int index = my * global_width_ + mx;
-	return global_potarr_[index];
+
+	if(global_potarr_[index] == -1){
+		return POT_HIGH;
+	}else
+		return global_potarr_[index];
   }
 
   void MpepcPlannerROS::updateObstacleTree(costmap_2d::Costmap2D *costmap){

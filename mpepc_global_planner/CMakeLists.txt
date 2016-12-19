@@ -112,9 +112,9 @@ add_service_files(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES turtlebot_mpepc
-#  CATKIN_DEPENDS costmap_2d geometry_msgs nav_core nav_msgs navfn roscpp roslib rospy sensor_msgs std_msgs tf
+  INCLUDE_DIRS include
+  LIBRARIES navfnext
+  CATKIN_DEPENDS costmap_2d geometry_msgs nav_core nav_msgs navfn roscpp roslib rospy sensor_msgs std_msgs tf
 #  DEPENDS system_lib
 )
 

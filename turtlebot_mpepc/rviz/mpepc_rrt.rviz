@@ -8,7 +8,8 @@ Panels:
         - /TF1/Tree1
         - /Local Planning1/Costmap1
         - /Global Planning1
-        - /RRT Discrete Path1
+        - /Global Planning1/Potential Map1
+        - /Funnel1
       Splitter Ratio: 0.5
     Tree Height: 505
   - Class: rviz/Selection
@@ -481,6 +482,15 @@ Visualization Manager:
           Topic: /move_base/global_costmap/costmap
           Unreliable: false
           Value: true
+        - Alpha: 0.7
+          Class: rviz/Map
+          Color Scheme: costmap
+          Draw Behind: false
+          Enabled: true
+          Name: Potential Map
+          Topic: /move_base/Srl_global_planner/rrt_potential_collision_free
+          Unreliable: false
+          Value: true
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
@@ -570,13 +580,13 @@ Visualization Manager:
       Unreliable: false
       Value: true
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /move_base/Srl_global_planner/rrt_planner_samples
       Name: RRT_Samples
       Namespaces:
-        Srl_global_planner: true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -629,6 +639,14 @@ Visualization Manager:
         rrt_planner: true
       Queue Size: 100
       Value: true
+    - Class: rviz/MarkerArray
+      Enabled: false
+      Marker Topic: /move_base/Srl_global_planner/rrt_planner_funnel
+      Name: Funnel
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -649,22 +667,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 27.811
+      Distance: 26.5061
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 26.6293
-        Y: 6.95212
-        Z: -1.28842
+        X: 9.39614
+        Y: 2.82945
+        Z: -1.32425
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 1.5298
+      Pitch: 1.3048
       Target Frame: base_link
       Value: Orbit (rviz)
-      Yaw: 6.14821
+      Yaw: 4.59998
     Saved: ~
 Window Geometry:
   Displays:

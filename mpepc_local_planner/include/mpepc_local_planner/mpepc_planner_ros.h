@@ -37,6 +37,7 @@
 #ifndef MPEPC_LOCAL_PLANNER_MPEPC_PLANNER_ROS_H_
 #define MPEPC_LOCAL_PLANNER_MPEPC_PLANNER_ROS_H_
 
+#include <navfn/navfn.h>
 #include <nav_msgs/Odometry.h>
 #include <costmap_2d/costmap_2d_ros.h>
 #include <nav_core/base_local_planner.h>
@@ -88,7 +89,7 @@ namespace mpepc_local_planner {
 
 	// Cost function params
 	static const double C1 = 0.05;
-	static const double C2 = 2.5;
+	static const double C2 = 0.25;	//2.5;
 	static const double C3 = 0.05;        // 0.15
 	static const double C4 = 0.05;        // 0.2 //turn
 	static const double PHI_COL = 1.0;   // 0.4
@@ -230,7 +231,7 @@ namespace mpepc_local_planner {
 	  ros::Subscriber navfn_cost_sub_;
 	  ros::ServiceClient navfn_cost_;
 
-	  std::vector<float> global_potarr_;
+	  std::vector<int8_t> global_potarr_;
 	  unsigned int global_width_, global_height_;
 	  double origin_x_, origin_y_, resolution_;
 
@@ -264,10 +265,11 @@ namespace mpepc_local_planner {
 	  geometry_msgs::Pose getCurrentRobotPose();
 
 	  // Function for mpepc optimization
-	  void nav_cost_cb(const mpepc_global_planner::NavigationCost::ConstPtr& nav_cost);
+	  //void nav_cost_cb(const mpepc_global_planner::NavigationCost::ConstPtr& nav_cost);
+	  void nav_cost_cb(const nav_msgs::OccupancyGrid::ConstPtr& nav_cost);
 	  void planThread();
 	  bool same_global_goal(geometry_msgs::PoseStamped new_goal);
-	  geometry_msgs::Pose transformOdomToMap(geometry_msgs::Pose local_pose);
+	  geometry_msgs::Point transformOdomToMap(geometry_msgs::Pose local_pose);
 	  double getGlobalPlannerCost(geometry_msgs::Pose local_pose);
 	  double getGlobalPointPotential(geometry_msgs::Pose local_pose);
 
