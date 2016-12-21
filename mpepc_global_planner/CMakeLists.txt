@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_core
   nav_msgs
   navfn
+  global_planner
   roscpp
   roslib
   rospy
@@ -114,7 +115,7 @@ add_service_files(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES navfnext
-  CATKIN_DEPENDS costmap_2d geometry_msgs nav_core nav_msgs navfn roscpp roslib rospy sensor_msgs std_msgs tf
+  CATKIN_DEPENDS costmap_2d geometry_msgs nav_core nav_msgs navfn global_planner roscpp roslib rospy sensor_msgs std_msgs tf
 #  DEPENDS system_lib
 )
 

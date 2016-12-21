@@ -22,36 +22,35 @@ namespace navfn {
 	static const double PI= 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348;
 
 	NavfnROSExt::NavfnROSExt() :
-		NavfnROS(){}
-	NavfnROSExt::NavfnROSExt(std::string name, costmap_2d::Costmap2DROS* costmap_ros) :
-		NavfnROS(name, costmap_ros){}
+		global_planner::GlobalPlanner(){}
+	NavfnROSExt::NavfnROSExt(std::string name, costmap_2d::Costmap2D* costmap_ros, std::string frame_id) :
+		global_planner::GlobalPlanner(name, costmap_ros, frame_id){}
 
 	void NavfnROSExt::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros){
-		NavfnROS::initialize(name, costmap_ros);
+		global_planner::GlobalPlanner::initialize(name, costmap_ros);
 
 		// Must initialize first and then get costmap
-		map_resolution = (costmap_ros_->getCostmap())->getResolution();
+		/*map_resolution = (costmap_ros_->getCostmap())->getResolution();
 		interp_rotation_factor = (sqrt(2) * map_resolution - map_resolution)/2;
 
 		ros::NodeHandle private_nh("~/" + name);
 		nav_cost_pub_ = private_nh.advertise<mpepc_global_planner::NavigationCost>("nav_cost_arr", 1);
 		nav_cost_map_pub_ = private_nh.advertise<nav_msgs::OccupancyGrid>("nav_cost_map", 1);
-		cost_service_ = private_nh.advertiseService("nav_cost", &NavfnROSExt::getNavigationCost, this);
-
+		cost_service_ = private_nh.advertiseService("nav_cost", &NavfnROSExt::getNavigationCost, this);*/
 		ROS_INFO("Initialized NavfnROSExt");
 	}
 
 	bool NavfnROSExt::makePlan(const geometry_msgs::PoseStamped& start,
 				  const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan){
-		bool result = NavfnROS::makePlan(goal, start, plan);
+		bool result = global_planner::GlobalPlanner::makePlan(goal, start, plan);
 
 		// Now copy orientation of goal pose to plan
-		/*geometry_msgs::PoseStamped goal_copy = goal;
+		geometry_msgs::PoseStamped goal_copy = goal;
 		goal_copy.header.stamp = ros::Time::now();
-		plan[0] = goal_copy;*/
+		plan[0] = goal_copy;
 		std::reverse(plan.begin(), plan.end());
 
-		mpepc_global_planner::NavigationCost nav_cost;
+		/*mpepc_global_planner::NavigationCost nav_cost;
 		float * tmp = planner_->potarr;
 		std::vector<float> potarr(tmp, tmp + (unsigned int)planner_->ns);
 		nav_cost.potential_cost = potarr;
@@ -94,7 +93,7 @@ namespace navfn {
 		potentialMap.info.resolution = map_resolution;
 		potentialMap.info.origin.position.x = costmap_ros_->getCostmap()->getOriginX();
 		potentialMap.info.origin.position.y = costmap_ros_->getCostmap()->getOriginY();
-		nav_cost_map_pub_.publish(potentialMap);
+		nav_cost_map_pub_.publish(potentialMap);*/
 		return result;
 	}
 

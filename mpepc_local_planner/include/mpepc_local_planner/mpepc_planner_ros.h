@@ -89,7 +89,7 @@ namespace mpepc_local_planner {
 
 	// Cost function params
 	static const double C1 = 0.05;
-	static const double C2 = 0.25;		  //2.5
+	static const double C2 = 1.00;		  //2.5
 	static const double C3 = 0.05;        // 0.15
 	static const double C4 = 0.05;        // 0.2 //turn
 	static const double PHI_COL = 1.0;   // 0.4

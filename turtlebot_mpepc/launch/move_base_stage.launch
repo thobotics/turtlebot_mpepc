@@ -87,6 +87,6 @@
   </include>-->
   
   <!--  **************** Visualisation ****************  -->
-  <node pkg="rviz" type="rviz" respawn="false" name="rviz" args="-d $(find turtlebot_mpepc)/rviz/mpepc_rrt.rviz" />
+  <node pkg="rviz" type="rviz" respawn="false" name="rviz" args="-d $(find turtlebot_mpepc)/rviz/mpepc_nav.rviz" />
   <!--<node pkg="rviz" type="rviz" respawn="false" name="rviz" args="-d $(find srl_global_planner)/rviz/planning.rviz" />-->
 </launch>
