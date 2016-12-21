@@ -17,7 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Boost REQUIRED COMPONENTS system thread)
 
 generate_dynamic_reconfigure_options(
-  cfg/AckermannPlanner.cfg
+  cfg/MPEPCPlanner.cfg
 )
 
 ## Generate messages in the 'msg' folder

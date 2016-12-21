@@ -43,9 +43,9 @@
 #include <nav_core/base_local_planner.h>
 #include <base_local_planner/odometry_helper_ros.h>
 #include <base_local_planner/latched_stop_rotate_controller.h>
-#include <mpepc_global_planner/NavigationCost.h>
 #include <mpepc_local_planner/control_law.h>
 #include <mpepc_local_planner/EgoGoal.h>
+#include <mpepc_local_planner/MPEPCPlannerConfig.h>
 #include <math.h>
 #include <string>
 #include <vector>
@@ -71,29 +71,6 @@ namespace mpepc_local_planner {
 	#define RESULT_BEGIN 1
 	#define RESULT_SUCCESS 2
 	#define RESULT_CANCEL 3
-
-	// Trajectory Model Params
-	#define K_1 1.2           // 2
-	#define K_2 3             // 8
-	#define BETA 0.4          // 0.5
-	#define LAMBDA 2          // 3
-	#define R_THRESH 0.05
-	#define V_MAX 0.3         // 0.3
-	#define V_MIN 0.0
-
-	// Trajectory Optimization Params
-	#define TIME_HORIZON 5.0
-	#define DELTA_SIM_TIME 0.2
-	#define SAFETY_ZONE 0.225
-	#define WAYPOINT_THRESH 1.75
-
-	// Cost function params
-	static const double C1 = 0.05;
-	static const double C2 = 1.00;		  //2.5
-	static const double C3 = 0.05;        // 0.15
-	static const double C4 = 0.05;        // 0.2 //turn
-	static const double PHI_COL = 1.0;   // 0.4
-	static const double SIGMA = 0.2;    // 0.10
 
 	static const double PI= 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348;
 	static const double TWO_PI= 6.2831853071795864769252867665590057683943387987502116419498891846156328125724179972560696;
@@ -211,7 +188,7 @@ namespace mpepc_local_planner {
       // Use NLOPT to find the next subgoal for the trajectory generator
 	  void find_intermediate_goal_params(EgoGoal *next_step);
 	  // This function is used by the optimizer to score different trajectories
-	  double sim_trajectory(double r, double delta, double theta, double vMax, double time_horizon);
+	  double sim_trajectory(double r, double delta, double theta, double vMax);
 
     private:
       bool isInitialized() {
@@ -229,7 +206,6 @@ namespace mpepc_local_planner {
 	  costmap_2d::Costmap2DROS* costmap_ros_;
 
 	  ros::Subscriber navfn_cost_sub_;
-	  ros::ServiceClient navfn_cost_;
 
 	  std::vector<int8_t> global_potarr_;
 	  unsigned int global_width_, global_height_;
@@ -240,6 +216,32 @@ namespace mpepc_local_planner {
 	  nav_msgs::GridCells cost_map;
 	  ControlLawSettings settings_;
 	  ControlLaw * cl;
+
+	  dynamic_reconfigure::Server<MPEPCPlannerConfig> *dsrv_;
+
+	  // Trajectory Model Params
+	  double K_1; //1.2           // 2
+	  double K_2; //3             // 8
+	  double BETA; //0.4          // 0.5
+	  double LAMBDA; //2          // 3
+	  double R_THRESH; //0.05
+	  double V_MAX; //0.5         // 0.3
+	  double V_MIN; //0.0
+	  double W_TURN;//0.2
+
+	  // Trajectory Optimization Params
+	  double TIME_HORIZON; 		//5.0
+	  double DELTA_SIM_TIME; 	//0.2
+	  double SAFETY_ZONE; 		//0.225
+	  double WAYPOINT_THRESH; 	//1.75
+
+	  // Cost function params
+	  double C1;// = 0.05;
+	  double C2;// = 1.00;		 //2.5
+	  double C3;// = 0.05;       // 0.15
+	  double C4;// = 0.05;       // 0.2 //turn
+	  double SIGMA;    // 0.10
+	  static const double PHI_COL = 1.0;   // 0.4
 
 	  flann::Index<flann::L2<float> > * obs_tree;
 	  flann::Matrix<float> * data;
@@ -262,6 +264,11 @@ namespace mpepc_local_planner {
 	  geometry_msgs::PoseStamped global_goal_pose_stamped_;
 	  geometry_msgs::Pose local_goal_pose_;
 
+	  /**
+	 * @brief Callback to update the local planner's parameters based on dynamic reconfigure
+	 */
+	  void reconfigureCB(MPEPCPlannerConfig &config, uint32_t level);
+
 	  geometry_msgs::Pose getCurrentRobotPose();
 
 	  // Function for mpepc optimization
@@ -269,7 +276,6 @@ namespace mpepc_local_planner {
 	  void planThread();
 	  bool same_global_goal(geometry_msgs::PoseStamped new_goal);
 	  geometry_msgs::Point transformOdomToMap(geometry_msgs::Pose local_pose);
-	  double getGlobalPlannerCost(geometry_msgs::Pose local_pose);
 	  double getGlobalPointPotential(geometry_msgs::Pose local_pose);
 
 	  void updateObstacleTree(costmap_2d::Costmap2D *costmap);

@@ -38,7 +38,6 @@
 #include <mpepc_local_planner/mpepc_planner_ros.h>
 #include <pluginlib/class_list_macros.h>
 #include <base_local_planner/goal_functions.h>
-#include <mpepc_global_planner/GetNavCost.h>
 
 #include <ctime>
 
@@ -82,6 +81,13 @@ namespace mpepc_local_planner {
 			private_nh.param<std::string>("odom_topic", odom_topic, "odom");
 			odom_helper_.setOdomTopic( odom_topic );
 
+			// Set parameters
+			private_nh.param<double>("cost_theta", C1, 0.05);
+			private_nh.param<double>("cost_collision", C2, 1.0);
+			private_nh.param<double>("cost_v", C3, 0.05);
+			private_nh.param<double>("cost_w", C4, 0.05);
+			private_nh.param<double>("cost_collision_sigma", SIGMA, 0.2);
+
 			// For compute obstacle tree
 			// NOTE: Copy from costmap_2d_publisher.
 			if (cost_translation_table_ == NULL)
@@ -103,9 +109,14 @@ namespace mpepc_local_planner {
 			}
 
 			// FOR mpepc_plan
+			std::string potential_topic;
+			private_nh.param<std::string>("potential_topic", potential_topic, "/move_base/NavfnROSExt/potential");
 			//navfn_cost_sub_ = private_nh.subscribe<nav_msgs::OccupancyGrid> ("/move_base/Srl_global_planner/rrt_potential_collision_free", 1, &MpepcPlannerROS::nav_cost_cb, this);
-			navfn_cost_sub_ = private_nh.subscribe<nav_msgs::OccupancyGrid> ("/move_base/NavfnROSExt/potential", 1, &MpepcPlannerROS::nav_cost_cb, this);
-			navfn_cost_ = private_nh.serviceClient<mpepc_global_planner::GetNavCost>("/move_base/NavfnROSExt/nav_cost");
+			navfn_cost_sub_ = private_nh.subscribe<nav_msgs::OccupancyGrid> (potential_topic, 1, &MpepcPlannerROS::nav_cost_cb, this);
+
+			dsrv_ = new dynamic_reconfigure::Server<MPEPCPlannerConfig>(private_nh);
+		    dynamic_reconfigure::Server<MPEPCPlannerConfig>::CallbackType cb = boost::bind(&MpepcPlannerROS::reconfigureCB, this, _1, _2);
+			dsrv_->setCallback(cb);
 
 			// Initialize Motion Model
 			settings_.m_K1 = K_1;
@@ -114,14 +125,40 @@ namespace mpepc_local_planner {
 			settings_.m_LAMBDA = LAMBDA;
 			settings_.m_R_THRESH = R_THRESH;
 			settings_.m_V_MAX = V_MAX;
-			settings_.m_V_MIN = 0.2;//V_MIN;
-			cl = new ControlLaw(settings_);
+			settings_.m_V_MIN = W_TURN;//V_MIN;
+			cl = new ControlLaw(&settings_);
 
 			initialized_ = true;
 		}
 		else{
 		  ROS_WARN_NAMED("MPEPCPlanner", "This planner has already been initialized, doing nothing.");
 		}
+  }
+
+  void MpepcPlannerROS::reconfigureCB(MPEPCPlannerConfig &config, uint32_t level){
+	  K_1 = config.cl_K_1; //1.2           // 2
+	  K_2 = config.cl_K_2; //3             // 8
+	  BETA = config.cl_BETA; //0.4          // 0.5
+	  LAMBDA = config.cl_LAMBDA; //2          // 3
+	  R_THRESH = config.cl_R_THRESH; //0.05
+	  V_MAX = config.cl_V_MAX; //0.5         // 0.3
+	  V_MIN = config.cl_V_MIN; //0.0
+	  W_TURN = config.cl_W_TURN;//0.2
+
+	  // Initialize Motion Model
+	  settings_.m_K1 = K_1;
+	  settings_.m_K2 = K_2;
+	  settings_.m_BETA = BETA;
+	  settings_.m_LAMBDA = LAMBDA;
+	  settings_.m_R_THRESH = R_THRESH;
+	  settings_.m_V_MAX = V_MAX;
+	  settings_.m_V_MIN = W_TURN;//V_MIN;
+
+	  // Trajectory Optimization Params
+	  TIME_HORIZON = config.TIME_HORIZON; 		//5.0
+	  DELTA_SIM_TIME = config.DELTA_SIM_TIME; 	//0.2
+	  SAFETY_ZONE = config.SAFETY_ZONE; 		//0.225
+	  WAYPOINT_THRESH = config.WAYPOINT_THRESH; 	//1.75
   }
 
   void MpepcPlannerROS::planThread(){
@@ -409,30 +446,6 @@ namespace mpepc_local_planner {
 		return global_point_stamp.point;
   }
 
-  double MpepcPlannerROS::getGlobalPlannerCost(geometry_msgs::Pose local_pose){
-	geometry_msgs::Point currentPoint = transformOdomToMap(local_pose);
-	// Service request
-	mpepc_global_planner::GetNavCost service;
-	service.request.world_point = currentPoint;
-
-	//begin_time = clock();
-	if (navfn_cost_.call(service))
-	{
-		/*ROS_INFO("Response cost at %f %f : %f",
-				currentPoint.x, currentPoint.y,
-				(double)service.response.cost);*/
-		//ROS_INFO("Get nav_cost from service take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
-
-		return (double)service.response.cost;
-	}
-	else
-	{
-		ROS_ERROR("Failed to call service");
-	}
-
-	return -1;
-  }
-
   double MpepcPlannerROS::getGlobalPointPotential(geometry_msgs::Pose local_pose){
 	//clock_t begin_time = clock();
 	geometry_msgs::Point currentPoint = transformOdomToMap(local_pose);
@@ -641,13 +654,14 @@ namespace mpepc_local_planner {
     return minDist;
   }
 
-  double MpepcPlannerROS::sim_trajectory(double r, double delta, double theta, double vMax, double time_horizon){
+  double MpepcPlannerROS::sim_trajectory(double r, double delta, double theta, double vMax){
 	// Get robot pose from local cost map
 	// DONE: Change this to getCurrentRobotPose.
 	// 1. Why need to change this? Ans: May be it help for faster reading current pose,
 	// but not sure because getCurrentRobotPose use transform instead of callback in Odom.
 	// 2. Why not change it now? Ans: Because it may need to change other file: control_law, ...
 
+	double time_horizon = TIME_HORIZON;
 	geometry_msgs::Pose sim_pose = sim_current_pose_;
 
 	EgoPolar sim_goal;
@@ -744,9 +758,8 @@ namespace mpepc_local_planner {
    * Note: this function is not belong to class
    */
   double score_trajectory(const std::vector<double> &x, std::vector<double> &grad, void* f_data){
-	double time_horizon = TIME_HORIZON;
 	MpepcPlannerROS * planner = static_cast<MpepcPlannerROS *>(f_data);
-	return planner->sim_trajectory(x[0], x[1], x[2], x[3], time_horizon);
+	return planner->sim_trajectory(x[0], x[1], x[2], x[3]);
   }
 
   void MpepcPlannerROS::find_intermediate_goal_params(EgoGoal *next_step)

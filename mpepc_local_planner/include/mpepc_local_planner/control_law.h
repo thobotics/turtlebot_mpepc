@@ -52,7 +52,7 @@ namespace mpepc_local_planner
   {
     public:
       ControlLaw();
-      explicit ControlLaw(ControlLawSettings c);
+      explicit ControlLaw(ControlLawSettings* c);
       geometry_msgs::Twist get_velocity_command(geometry_msgs::Pose current_position, geometry_msgs::Pose goal, double k1 = 2, double k2 = 3, double vMax = 0.3);
       geometry_msgs::Twist get_velocity_command(EgoPolar goal_coords, double k1, double k2, double vMax);
       geometry_msgs::Twist get_velocity_command(EgoPolar goal_coords, double vMax = 0.3);
@@ -75,7 +75,7 @@ namespace mpepc_local_planner
       double mod(double x, double y);
 
 
-      ControlLawSettings settings_;
+      ControlLawSettings* settings_;
   };
 }
 

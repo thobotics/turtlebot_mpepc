@@ -14,7 +14,7 @@ namespace mpepc_local_planner
   {
   }
 
-  ControlLaw::ControlLaw(ControlLawSettings c)
+  ControlLaw::ControlLaw(ControlLawSettings* c)
   {
     settings_ = c;
   }
@@ -57,8 +57,8 @@ namespace mpepc_local_planner
 
   void ControlLaw::update_k1_k2(double k1, double k2)
   {
-    settings_.m_K1 = k1;
-    settings_.m_K2 = k2;
+    settings_->m_K1 = k1;
+    settings_->m_K2 = k2;
   }
 
   // wrap [rad] angle to [-PI..PI)
@@ -126,11 +126,11 @@ namespace mpepc_local_planner
   double ControlLaw::get_linear_vel(double kappa, EgoPolar current_ego_goal, double vMax)
   {
     double lin_vel = 0;
-    lin_vel = min(settings_.m_V_MAX/settings_.m_R_THRESH*current_ego_goal.r, settings_.m_V_MAX/(1 + settings_.m_BETA * pow(abs(kappa), settings_.m_LAMBDA)));
+    lin_vel = min(settings_->m_V_MAX/settings_->m_R_THRESH*current_ego_goal.r, settings_->m_V_MAX/(1 + settings_->m_BETA * pow(abs(kappa), settings_->m_LAMBDA)));
 
-    if (lin_vel < settings_.m_V_MIN && lin_vel > 0.00)
+    if (lin_vel < settings_->m_V_MIN && lin_vel > 0.00)
     {
-      lin_vel = settings_.m_V_MIN;
+      lin_vel = settings_->m_V_MIN;
     }
     return lin_vel;
   }
@@ -155,7 +155,7 @@ namespace mpepc_local_planner
 
   geometry_msgs::Twist ControlLaw::get_velocity_command(EgoPolar goal_coords, double vMax)
   {
-    return get_velocity_command(goal_coords, settings_.m_K1, settings_.m_K2, vMax);
+    return get_velocity_command(goal_coords, settings_->m_K1, settings_->m_K2, vMax);
   }
 
   geometry_msgs::Twist ControlLaw::get_velocity_command(EgoPolar goal_coords, double k1, double k2, double vMax)
