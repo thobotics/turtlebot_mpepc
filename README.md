@@ -11,7 +11,7 @@ The other advantage of this current package is it organized like the original RO
 
 This package has tested on 2 popular simulator in ROS: Stage and Gazebo, with and without apply localization.
 
-To Run:
+## To Run:
 1) Stage:
 ```
 roslaunch turtlebot_mpepc move_base_stage.launch
