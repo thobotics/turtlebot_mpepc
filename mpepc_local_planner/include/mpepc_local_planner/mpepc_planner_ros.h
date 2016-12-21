@@ -243,6 +243,11 @@ namespace mpepc_local_planner {
 	  double SIGMA;    // 0.10
 	  static const double PHI_COL = 1.0;   // 0.4
 
+	  double GOAL_DIST_UPDATE_THRESH;
+	  double GOAL_ANGLE_UPDATE_THRESH;
+	  double GOAL_DIST_ID_THRESH;
+	  double GOAL_ANGLE_ID_THRESH;
+
 	  flann::Index<flann::L2<float> > * obs_tree;
 	  flann::Matrix<float> * data;
 	  int trajectory_count;

@@ -45,11 +45,6 @@
 PLUGINLIB_EXPORT_CLASS(mpepc_local_planner::MpepcPlannerROS, nav_core::BaseLocalPlanner)
 
 namespace mpepc_local_planner {
-#define GOAL_DIST_UPDATE_THRESH   0.15   // in meters
-#define GOAL_ANGLE_UPDATE_THRESH  0.1   // in radians
-
-#define GOAL_DIST_ID_THRESH   0.1       // in meters
-#define GOAL_ANGLE_ID_THRESH  0.3       // in radians
 
   char* MpepcPlannerROS::cost_translation_table_ = NULL;
 
@@ -87,6 +82,10 @@ namespace mpepc_local_planner {
 			private_nh.param<double>("cost_v", C3, 0.05);
 			private_nh.param<double>("cost_w", C4, 0.05);
 			private_nh.param<double>("cost_collision_sigma", SIGMA, 0.2);
+			private_nh.param<double>("goal_dist_tol", GOAL_DIST_UPDATE_THRESH,  0.15);
+			private_nh.param<double>("goal_angle_tol", GOAL_ANGLE_UPDATE_THRESH, 0.1);
+			private_nh.param<double>("goal_dist_same", GOAL_DIST_ID_THRESH, 0.1);
+			private_nh.param<double>("goal_angle_same", GOAL_ANGLE_ID_THRESH, 0.3);
 
 			// For compute obstacle tree
 			// NOTE: Copy from costmap_2d_publisher.
