@@ -611,6 +611,9 @@ namespace mpepc_local_planner {
 
   double MpepcPlannerROS::min_distance_to_obstacle(geometry_msgs::Pose local_current_pose, double *heading)
   {
+	if(cost_map.cells.size() == 0){
+		return 100000;
+	}
     // ROS_INFO("In minDist Function");
     Point global(local_current_pose.position.x, local_current_pose.position.y);
     MinDistResult nn_graph_point = find_nearest_neighbor(global);
