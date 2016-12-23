@@ -112,6 +112,7 @@ namespace mpepc_local_planner {
 			private_nh.param<std::string>("potential_topic", potential_topic, "/move_base/NavfnROSExt/potential");
 			//navfn_cost_sub_ = private_nh.subscribe<nav_msgs::OccupancyGrid> ("/move_base/Srl_global_planner/rrt_potential_collision_free", 1, &MpepcPlannerROS::nav_cost_cb, this);
 			navfn_cost_sub_ = private_nh.subscribe<nav_msgs::OccupancyGrid> (potential_topic, 1, &MpepcPlannerROS::nav_cost_cb, this);
+			pub_traj_sample_ = private_nh.advertise<visualization_msgs::MarkerArray>("mpepc_traj_sample",1000);
 
 			dsrv_ = new dynamic_reconfigure::Server<MPEPCPlannerConfig>(private_nh);
 		    dynamic_reconfigure::Server<MPEPCPlannerConfig>::CallbackType cb = boost::bind(&MpepcPlannerROS::reconfigureCB, this, _1, _2);
@@ -177,7 +178,10 @@ namespace mpepc_local_planner {
 		// Must update Obstacle Tree before using optimization technique
 		updateObstacleTree(costmap_ros_->getCostmap());
 		sim_current_pose_ = getCurrentRobotPose();
+
+		//clock_t begin_time = clock();
 		find_intermediate_goal_params(&new_coords);
+		//ROS_INFO("Optimize take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
 
 		{
 			boost::mutex::scoped_lock lock(inter_goal_mutex_);
@@ -189,6 +193,8 @@ namespace mpepc_local_planner {
 			inter_goal_k2_ = new_coords.k2;
 		}
 
+		pub_traj_sample_.publish(trajectArray);
+		trajectArray.markers.clear();
 		l_plan_pub_.publish(get_trajectory_viz(new_coords));
 		rate_obj.sleep();
 
@@ -468,7 +474,7 @@ namespace mpepc_local_planner {
 	unsigned int index = my * global_width_ + mx;
 
 	if(global_potarr_[index] == -1){
-		return POT_HIGH;
+		return 100; // Highest
 	}else
 		return global_potarr_[index];
   }
@@ -692,6 +698,8 @@ namespace mpepc_local_planner {
 	double survivability = 1.0;
 	double obstacle_heading = 0.0;
 
+	visualization_msgs::Marker traj_marker;
+
 	while (sim_clock < time_horizon)
 	{
 	  // Get Velocity Commands
@@ -709,23 +717,25 @@ namespace mpepc_local_planner {
 	  // Get navigation function at new pose
 	  nav_fn_t1 = getGlobalPointPotential(sim_pose);
 
-	  double minDist = min_distance_to_obstacle(sim_pose, &obstacle_heading);
-
-	  if (minDist <= SAFETY_ZONE)
-	  {
-		// ROS_INFO("Collision Detected");
-		collision_detected = true;
-	  }
-
 	  // Get collision probability
 	  if (!collision_detected)
 	  {
-		collision_prob = exp(-1*pow(minDist, 2)/SIGMA_DENOM);  // sigma^2
+		  double minDist = min_distance_to_obstacle(sim_pose, &obstacle_heading);
+
+		  if (minDist <= SAFETY_ZONE)
+		  {
+			// ROS_INFO("Collision Detected");
+			collision_detected = true;
+			if(isLocalOptimize_)
+				traj_marker.color.r = 1.0;
+		  }
+		  collision_prob = exp(-1*pow(minDist, 2)/SIGMA_DENOM);  // sigma^2
 	  }
 	  else
 	  {
 		collision_prob = 1;
 	  }
+
 
 	  // Get survivability
 	  survivability = survivability*(1 - collision_prob);
@@ -742,6 +752,9 @@ namespace mpepc_local_planner {
 	  sim_goal = cl->convert_to_egopolar(sim_pose, current_goal);
 
 	  sim_clock = sim_clock + DELTA_SIM_TIME;
+
+	  if(isLocalOptimize_)
+		  traj_marker.points.push_back(sim_pose.position);
 	}
 
 	// Update with angle heuristic - weighted difference between final pose and gradient of navigation function
@@ -749,10 +762,28 @@ namespace mpepc_local_planner {
 
 	expected_progress = expected_progress + C1 * abs(tf::getYaw(sim_pose.orientation) - gradient_angle);
 
+	double sumCost = (expected_collision + expected_progress + expected_action);
+	if(isLocalOptimize_){
+		if(maxTrajCost == -1 || sumCost > maxTrajCost)
+			maxTrajCost = sumCost;
+
+		traj_marker.header.frame_id = costmap_ros_->getGlobalFrameID();
+		traj_marker.header.stamp = ros::Time();
+		traj_marker.ns = "Mpepc_sample";
+		traj_marker.id = trajectory_count;
+
+		traj_marker.type = visualization_msgs::Marker::LINE_STRIP;
+		traj_marker.color.a = 1;
+		traj_marker.color.g = static_cast<float>(sumCost);
+
+		traj_marker.scale.x = 0.03;
+
+		trajectArray.markers.push_back(traj_marker);
+	}
 	++trajectory_count;
 
 	// SUM collision cost, progress cost, action cost
-	return (expected_collision + expected_progress + expected_action);
+	return sumCost;
   }
 
   /**
@@ -793,6 +824,7 @@ namespace mpepc_local_planner {
     k[3] = 0.0;
     double minf;
 
+    isLocalOptimize_ = false;
     opt.optimize(k, minf);
 
     ROS_DEBUG("Global Optimization - Trajectories evaluated: %d", trajectory_count);
@@ -816,9 +848,28 @@ namespace mpepc_local_planner {
     opt2.set_upper_bounds(rb2);
     opt2.set_maxeval(max_iter);
 
+    isLocalOptimize_ = true;
+    maxTrajCost = -1;
     opt2.optimize(k, minf);
 
     ROS_DEBUG("Local Optimization - Trajectories evaluated: %d", trajectory_count);
+    // Make it has color
+    for(int i = 0; i < trajectory_count; i++){
+    	float scale = 1 - (trajectArray.markers[i].color.g - minf)/(maxTrajCost - minf)*1.0;
+    	trajectArray.markers[i].color.g = scale;
+	}
+    if(last_local_traj_size_ > trajectory_count){
+		for(int i = trajectory_count; i < last_local_traj_size_; i++){
+			visualization_msgs::Marker traj_marker;
+			traj_marker.header.frame_id = costmap_ros_->getGlobalFrameID();
+			traj_marker.header.stamp = ros::Time();
+			traj_marker.ns = "Mpepc_sample";
+			traj_marker.id = i;
+			traj_marker.action = visualization_msgs::Marker::DELETE;
+			trajectArray.markers.push_back(traj_marker);
+		}
+	}
+    last_local_traj_size_ = trajectory_count;
     trajectory_count = 0;
 
     next_step->r = k[0];
