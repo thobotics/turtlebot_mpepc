@@ -50,6 +50,9 @@
 #include <string>
 #include <vector>
 
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
+
 #include <std_msgs/Int32.h>
 #include <std_msgs/Float32MultiArray.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -258,6 +261,11 @@ namespace mpepc_local_planner {
 	  static char* cost_translation_table_;
 
 	  geometry_msgs::Pose sim_current_pose_;
+	  bool isLocalOptimize_;
+	  double maxTrajCost;
+	  visualization_msgs::MarkerArray trajectArray;
+	  int last_local_traj_size_;
+	  ros::Publisher pub_traj_sample_;
 
 	  boost::mutex planner_mutex_, inter_goal_mutex_;
 	  boost::condition_variable planner_cond_;

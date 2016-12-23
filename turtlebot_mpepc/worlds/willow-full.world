@@ -54,9 +54,9 @@ interval_sim 100  # simulation timestep in milliseconds
 window
 ( 
   size [ 745 448 ] 
-  center [ 16.449 13.443 ]	
-  rotate [ 0.000 0.000 ]
-  scale 21.642 
+  center [ 46.758 22.161 ]	
+  rotate [ 5.000 31.500 ]
+  scale 26.187 
 )
 
 # load an environment bitmap
@@ -65,9 +65,9 @@ floorplan
   name "willow"
   bitmap "../maps/willow-full.pgm"
   size [58.400 52.600 0.500]
-  pose [ 29.200 26.300 0.000 0.000 ]
+  pose [ 29.200 26.262 0.000 0.000 ]
 )
 
 # throw in a robot
-turtlebot( pose [ 17.340 15.540 0.000 87.363 ] name "turtlebot1" color "gray" gui_nose 1)
-block( pose [ 13.903 16.228 0.000 180.000 ] color "red")
+turtlebot( pose [ 50.926 27.654 0.000 -93.405 ] name "turtlebot1" color "gray" gui_nose 1)
+block( pose [ 41.242 20.621 0.000 180.000 ] color "red")

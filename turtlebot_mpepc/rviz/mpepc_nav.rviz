@@ -6,11 +6,11 @@ Panels:
       Expanded:
         - /TF1/Frames1
         - /TF1/Tree1
+        - /Local Planning1
         - /Local Planning1/Costmap1
-        - /Global Planning1
         - /Global Planning1/Navigation CostMap1
       Splitter Ratio: 0.5
-    Tree Height: 522
+    Tree Height: 505
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -379,7 +379,7 @@ Visualization Manager:
       Displays:
         - Alpha: 0.7
           Class: rviz/Map
-          Color Scheme: map
+          Color Scheme: costmap
           Draw Behind: false
           Enabled: true
           Name: Costmap
@@ -391,6 +391,9 @@ Visualization Manager:
           Class: rviz/Path
           Color: 0; 12; 255
           Enabled: true
+          Head Diameter: 0.3
+          Head Length: 0.2
+          Length: 0.3
           Line Style: Lines
           Line Width: 0.03
           Name: Planner
@@ -398,6 +401,10 @@ Visualization Manager:
             X: 0
             Y: 0
             Z: 0
+          Pose Style: None
+          Radius: 0.03
+          Shaft Diameter: 0.1
+          Shaft Length: 0.1
           Topic: /move_base/DWAPlannerROS/local_plan
           Unreliable: false
           Value: true
@@ -461,6 +468,14 @@ Visualization Manager:
           Use Fixed Frame: true
           Use rainbow: false
           Value: false
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /move_base/MpepcPlannerROS/mpepc_traj_sample
+          Name: Trajectory Sample
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: true
       Enabled: true
       Name: Local Planning
     - Class: rviz/Group
@@ -479,6 +494,9 @@ Visualization Manager:
           Class: rviz/Path
           Color: 255; 0; 0
           Enabled: true
+          Head Diameter: 0.3
+          Head Length: 0.2
+          Length: 0.3
           Line Style: Lines
           Line Width: 0.03
           Name: Planner
@@ -486,6 +504,10 @@ Visualization Manager:
             X: 0
             Y: 0
             Z: 0
+          Pose Style: None
+          Radius: 0.03
+          Shaft Diameter: 0.1
+          Shaft Length: 0.1
           Topic: /move_base/DWAPlannerROS/global_plan
           Unreliable: false
           Value: true
@@ -528,6 +550,9 @@ Visualization Manager:
       Class: rviz/Path
       Color: 25; 255; 0
       Enabled: true
+      Head Diameter: 0.3
+      Head Length: 0.2
+      Length: 0.3
       Line Style: Lines
       Line Width: 0.03
       Name: Path (global)
@@ -535,6 +560,10 @@ Visualization Manager:
         X: 0
         Y: 0
         Z: 0
+      Pose Style: None
+      Radius: 0.03
+      Shaft Diameter: 0.1
+      Shaft Length: 0.1
       Topic: /move_base/NavfnROSExt/plan
       Unreliable: false
       Value: true
@@ -584,16 +613,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 11.6096
+      Distance: 15.5739
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.901576
-        Y: -0.2148
-        Z: -0.231388
+        X: 0.254811
+        Y: -4.71063
+        Z: -0.23593
       Name: Current View
       Near Clip Distance: 0.01
       Pitch: 1.5698
@@ -607,7 +636,7 @@ Window Geometry:
   Height: 744
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001e100000298fc0200000005fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005300fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003600000298000000b700ffffff000000010000010b0000038bfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a0056006900650077007300000000320000038b0000009b00fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004a00000003efc0100000002fb0000000800540069006d00650000000000000004a00000024600fffffffb0000000800540069006d006501000000000000045000000000000000000000036f0000029800000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001e10000028bfc0200000005fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000006700fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c00610079007301000000400000028b000000e300ffffff000000010000010b0000038bfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a0056006900650077007300000000320000038b000000b300fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004a00000003efc0100000002fb0000000800540069006d00650000000000000004a0000002d300fffffffb0000000800540069006d006501000000000000045000000000000000000000036f0000028b00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
