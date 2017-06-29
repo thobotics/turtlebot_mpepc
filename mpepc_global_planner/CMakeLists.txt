@@ -142,11 +142,11 @@ add_library(navfnext
 # add_dependencies(turtlebot_mpepc ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(nav_test_client src/navfn_service_test.cpp)
+# add_executable(nav_test_client src/navfn_service_test.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(nav_test_client ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#add_dependencies(nav_test_client ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 #add_dependencies(navfnext ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
@@ -154,9 +154,9 @@ target_link_libraries(navfnext
    ${catkin_LIBRARIES}
 )
 
-target_link_libraries(nav_test_client
-   ${catkin_LIBRARIES}
-)
+#target_link_libraries(nav_test_client
+#   ${catkin_LIBRARIES}
+#)
 
 
 #############
