@@ -15,7 +15,7 @@
 #include <algorithm>
 
 //register this planner as a BaseGlobalPlanner plugin
-PLUGINLIB_DECLARE_CLASS(navfn, NavfnROSExt, navfn::NavfnROSExt, nav_core::BaseGlobalPlanner)
+PLUGINLIB_EXPORT_CLASS(navfn::NavfnROSExt, nav_core::BaseGlobalPlanner)
 
 namespace navfn {
 

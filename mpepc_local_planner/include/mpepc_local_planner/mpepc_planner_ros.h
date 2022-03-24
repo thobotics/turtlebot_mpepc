@@ -61,6 +61,11 @@
 #include <geometry_msgs/Quaternion.h>
 #include <nav_msgs/GridCells.h>
 
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/message_filter.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+
+
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
 
@@ -159,9 +164,10 @@ namespace mpepc_local_planner {
        * @param tf A pointer to a transform listener
        * @param costmap The cost map to use for assigning costs to trajectories
        */
-      virtual void initialize(std::string name, tf::TransformListener* tf,
+    //   virtual void initialize(std::string name, tf::TransformListener* tf,
+    //       costmap_2d::Costmap2DROS* costmap_ros);
+		virtual void initialize(std::string name, tf2_ros::Buffer* tf,
           costmap_2d::Costmap2DROS* costmap_ros);
-
       /**
        * @brief  Destructor for the planner
        */
@@ -199,7 +205,9 @@ namespace mpepc_local_planner {
 	  }
       bool initialized_;
 	  bool goal_reached_;
-	  tf::TransformListener* tf_;
+	//   tf::TransformListener* tf_;
+	  tf2_ros::Buffer* tf_;
+  	  tf2_ros::TransformListener* tf2_;
 	  std::vector<geometry_msgs::PoseStamped> global_plan_;
 	  base_local_planner::OdometryHelperRos odom_helper_;
 
@@ -244,7 +252,7 @@ namespace mpepc_local_planner {
 	  double C3;// = 0.05;       // 0.15
 	  double C4;// = 0.05;       // 0.2 //turn
 	  double SIGMA;    // 0.10
-	  static const double PHI_COL = 1.0;   // 0.4
+	  static constexpr double PHI_COL = 1.0;   // 0.4
 
 	  double GOAL_DIST_UPDATE_THRESH;
 	  double GOAL_ANGLE_UPDATE_THRESH;

@@ -57,7 +57,7 @@ namespace mpepc_local_planner {
 
   void MpepcPlannerROS::initialize(
       std::string name,
-      tf::TransformListener* tf,
+      tf2_ros::Buffer* tf,
       costmap_2d::Costmap2DROS* costmap_ros) {
 	  	  if (! isInitialized()) {
 
@@ -229,16 +229,17 @@ namespace mpepc_local_planner {
 	if(!same_global_goal(global_goal_pose)){
 		global_goal_pose_stamped_ = global_goal_pose;
 
-		global_goal_pose.header.frame_id = "/map";
+		global_goal_pose.header.frame_id = "map";
 		// This is important!!!
 		// It make transformPose to lookup the latest available transform
 		global_goal_pose.header.stamp = ros::Time(0);
 		geometry_msgs::PoseStamped local_pose_stamp;
 		tf::StampedTransform transform;
 		try{
-			tf_->waitForTransform(costmap_ros_->getGlobalFrameID(), "/map", ros::Time(0), ros::Duration(10.0));
-			tf_->transformPose(costmap_ros_->getGlobalFrameID(), global_goal_pose, local_pose_stamp);
-		}catch (tf::TransformException & ex){
+			tf_->canTransform(costmap_ros_->getGlobalFrameID(), "map", ros::Time(0), ros::Duration(10.0));
+			// tf_->transformPose(costmap_ros_->getGlobalFrameID(), global_goal_pose, local_pose_stamp);
+			tf_->transform(global_goal_pose, local_pose_stamp,costmap_ros_->getGlobalFrameID());
+		}catch (tf2::TransformException & ex){
 			ROS_ERROR("Transform exception 222 : %s", ex.what());
 		}
 
@@ -350,6 +351,7 @@ namespace mpepc_local_planner {
 		if(inter_goal_coords_.r != -1){
 			geometry_msgs::Pose inter_goal_pose = cl->convert_from_egopolar(current_pose, inter_goal_coords_);
 			cmd_vel = cl->get_velocity_command(current_pose, inter_goal_pose, inter_goal_k1_, inter_goal_k2_, inter_goal_vMax_);
+			ROS_INFO("Get velocity command");
 		}
 	  }
 	}
@@ -383,13 +385,13 @@ namespace mpepc_local_planner {
 
   geometry_msgs::Pose MpepcPlannerROS::getCurrentRobotPose(){
 	// Get robot pose from local cost_map
-	tf::Stamped<tf::Pose> robot_pose;
+	geometry_msgs::PoseStamped robot_pose;
 	costmap_ros_->getRobotPose(robot_pose);
 
-	geometry_msgs::PoseStamped result;
-	tf::poseStampedTFToMsg(robot_pose, result);
+	// geometry_msgs::PoseStamped result;
+	// tf::poseStampedTFToMsg(robot_pose, result);
 
-	return result.pose;
+	return robot_pose.pose;
   }
 
   geometry_msgs::PoseArray MpepcPlannerROS::get_trajectory_viz(EgoGoal new_coords){
@@ -442,9 +444,10 @@ namespace mpepc_local_planner {
 		local_point.point = local_pose.position;
 		geometry_msgs::PointStamped global_point_stamp;
 		try{
-			tf_->waitForTransform("/map", costmap_ros_->getGlobalFrameID(), ros::Time(0), ros::Duration(10.0));
-			tf_->transformPoint("/map", local_point, global_point_stamp);
-		}catch (tf::TransformException & ex){
+			tf_->canTransform("map", costmap_ros_->getGlobalFrameID(), ros::Time(0), ros::Duration(10.0));
+			// tf_->transformPoint("map", local_point, global_point_stamp);
+			tf_->transform(local_point, global_point_stamp, "map");
+		}catch (tf2::TransformException & ex){
 			ROS_ERROR("Transform exception 111 : %s", ex.what());
 		}
 		//ROS_INFO("Transform plan take %f", float( clock() - begin_time ) /  CLOCKS_PER_SEC);
