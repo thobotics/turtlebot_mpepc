@@ -17,7 +17,7 @@
     <rosparam file="$(find turtlebot_mpepc)/param/mpepc_local_planner_params.yaml" command="load" />
     
 
-    <remap from="cmd_vel" to="/cmd_vel_mux/input/teleop"/>
+    <!-- <remap from="cmd_vel" to="/cmd_vel_mux/input/teleop"/> -->
     <remap from="odom" to="$(arg odom_topic)"/>
   </node>
 

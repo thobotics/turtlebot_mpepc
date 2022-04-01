@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   tf
+  tf2
   pluginlib
   message_generation
 )
@@ -115,7 +116,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES navfnext
-  CATKIN_DEPENDS costmap_2d geometry_msgs nav_core nav_msgs navfn global_planner roscpp roslib rospy sensor_msgs std_msgs tf
+  CATKIN_DEPENDS costmap_2d geometry_msgs nav_core nav_msgs navfn global_planner roscpp roslib rospy sensor_msgs std_msgs tf tf2
 #  DEPENDS system_lib
 )
 
