@@ -195,13 +195,13 @@ namespace mpepc_local_planner
       lock.unlock();
       EgoGoal new_coords;
       // Must update Obstacle Tree before using optimization technique
-      updateObstacleTree(costmap_ros_->getCostmap());
       sim_current_pose_ = getCurrentRobotPose();
+      updateObstacleTree(costmap_ros_->getCostmap());
 
       clock_t begin_time = clock();
       find_intermediate_goal_params(&new_coords);
-      // ROS_INFO("Optimize take %f", float(clock() - begin_time) /
-      //                                  CLOCKS_PER_SEC);
+      ROS_INFO("Optimize take %f", float(clock() - begin_time) /
+                                       CLOCKS_PER_SEC);
 
       {
         boost::mutex::scoped_lock lock(inter_goal_mutex_);
@@ -226,6 +226,7 @@ namespace mpepc_local_planner
   void MpepcPlannerROS::nav_cost_cb(
       const nav_msgs::OccupancyGrid::ConstPtr &nav_cost)
   {
+    ROS_INFO("In nav_cost_cb");
     global_potarr_ = nav_cost->data;
     global_width_ = nav_cost->info.width;
     global_height_ = nav_cost->info.height;
@@ -827,6 +828,8 @@ namespace mpepc_local_planner
       if (!collision_detected)
       {
         double minDist = min_distance_to_obstacle(sim_pose, &obstacle_heading);
+        if (isLocalOptimize_)
+          ROS_INFO("minDist: %lf", minDist);
 
         if (minDist <= SAFETY_ZONE)
         {
@@ -839,6 +842,8 @@ namespace mpepc_local_planner
       }
       else
       {
+        if (isLocalOptimize_)
+          ROS_INFO("collision!");
         collision_prob = 1;
       }
 
@@ -873,12 +878,24 @@ namespace mpepc_local_planner
         expected_progress +
         C1 * abs(tf::getYaw(sim_pose.orientation) - gradient_angle);
 
-    double sumCost = (expected_collision + expected_progress + expected_action);
+    // ROS_INFO("expected_collision: %lf, expected_progress: %lf, expected_action: %lf",
+    //          expected_collision, expected_progress, expected_action);
+
+    // ROS_INFO("expected_progress: %lf", expected_progress);
+
+    // ROS_INFO("expected_action: %lf", expected_action);
+
+    double sumCost = (expected_collision + expected_progress / 50.0 + expected_action);
     if (isLocalOptimize_)
     {
       if (maxTrajCost == -1 || sumCost > maxTrajCost)
-        maxTrajCost = sumCost;
+      {
 
+        maxTrajCost = sumCost;
+      }
+      ROS_INFO("expected_collision: %lf, expected_progress: %lf, expected_action: %lf",
+               expected_collision, expected_progress / 50.0, expected_action);
+      ROS_INFO("collision prob: %lf", collision_prob);
       traj_marker.header.frame_id = costmap_ros_->getGlobalFrameID();
       traj_marker.header.stamp = ros::Time();
       traj_marker.ns = "Mpepc_sample";
@@ -913,7 +930,7 @@ namespace mpepc_local_planner
   {
     trajectory_count = 0;
 
-    int max_iter = 30; // 250
+    int max_iter = 250; // 30
     nlopt::opt opt = nlopt::opt(nlopt::GN_DIRECT_NOSCAL, 4);
     opt.set_min_objective(score_trajectory, this);
     opt.set_xtol_rel(0.0001);
@@ -922,10 +939,12 @@ namespace mpepc_local_planner
     lb.push_back(0);
     lb.push_back(-1.8);
     lb.push_back(-1.8);
+    // lb.push_back(-1.0);
     lb.push_back(V_MIN);
     rb.push_back(5.0);
     rb.push_back(1.8);
     rb.push_back(1.8);
+    // rb.push_back(1.0);
     rb.push_back(V_MAX);
     opt.set_lower_bounds(lb);
     opt.set_upper_bounds(rb);
@@ -941,8 +960,8 @@ namespace mpepc_local_planner
     isLocalOptimize_ = false;
     opt.optimize(k, minf);
 
-    ROS_DEBUG("Global Optimization - Trajectories evaluated: %d",
-              trajectory_count);
+    ROS_INFO("Global Optimization - Trajectories evaluated: %d",
+             trajectory_count);
     trajectory_count = 0;
 
     max_iter = 75; // 200
@@ -954,10 +973,14 @@ namespace mpepc_local_planner
     lb2.push_back(0);
     lb2.push_back(-1.8);
     lb2.push_back(-3.1);
+    // lb2.push_back(-1.0);
+    // lb2.push_back(-1.8);
     lb2.push_back(V_MIN);
     rb2.push_back(5.0);
     rb2.push_back(1.8);
+    // rb2.push_back(1.8);
     rb2.push_back(3.1);
+    // rb2.push_back(1.0);
     rb2.push_back(V_MAX);
     opt2.set_lower_bounds(lb2);
     opt2.set_upper_bounds(rb2);
@@ -966,9 +989,9 @@ namespace mpepc_local_planner
     isLocalOptimize_ = true;
     maxTrajCost = -1;
     opt2.optimize(k, minf);
-
-    ROS_DEBUG("Local Optimization - Trajectories evaluated: %d",
-              trajectory_count);
+    ROS_INFO("min cost: %lf", minf);
+    // ROS_INFO("Local Optimization - Trajectories evaluated: %d",
+    //          trajectory_count);
     // Make it has color
     for (int i = 0; i < trajectory_count; i++)
     {

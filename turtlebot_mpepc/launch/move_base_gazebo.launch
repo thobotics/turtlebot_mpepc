@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  
+
   <include file="$(find turtlebot3_fake)/launch/turtlebot3_fake.launch"/>
 
   <include file="$(find turtlebot3_gazebo)/launch/turtlebot3_world.launch" />
@@ -27,7 +27,7 @@
 
   <!-- start up rviz unless visualization is set to false -->
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find turtlebot_mpepc)/rviz/mpepc_gazebo_nav.rviz"/>
-  
+
   <!--  ****** Move_base ******  -->
   <include file="$(find turtlebot_mpepc)/launch/includes/move_base.launch.xml"/>
 </launch>

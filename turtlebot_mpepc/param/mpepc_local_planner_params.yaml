@@ -1,9 +1,9 @@
 MpepcPlannerROS:
   potential_topic: "/move_base/NavfnROSExt/potential" # Potential topic
-  cost_theta: 0.005 # Theta gradient cost
+  cost_theta: 0.05 # Theta gradient cost
   cost_collision: 1.5 # Collision cost
-  cost_v: 0.05 # Velocity cost
-  cost_w: 0.05 # Angular cost
+  cost_v: 0.4 # Velocity cost
+  cost_w: 0.2 # Angular cost
   cost_collision_sigma: 0.2 # SIGMA
   goal_dist_tol: 0.1 # Goal distance tolerance
   goal_angle_tol: 0.1 # Goal angle tolerance
